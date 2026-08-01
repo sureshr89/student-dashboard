@@ -9,7 +9,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS for mobile responsiveness, text contrast, and touch-action locks
+# Injected CSS and JavaScript to lock tables as read-only (no cell selection) 
+# and automatically dismiss mobile keyboards on selection
 st.markdown(
     """
     <style>
@@ -42,6 +43,11 @@ st.markdown(
         color: #1f2937;
     }
 
+    /* Make DataFrames completely un-clickable/un-selectable to prevent cell highlighting */
+    [data-testid="stDataFrame"] {
+        pointer-events: none !important;
+    }
+
     /* Force Streamlit Navigation Buttons to have blue background and bright white text */
     .stButton > button {
         background-color: #385b96 !important;
@@ -59,20 +65,18 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Fix Streamlit Selectbox and Input boxes to have clean white background and dark text */
+    /* Fix Streamlit Selectbox and Input boxes */
     [data-baseweb="select"] > div, div[data-baseweb="input"] > div {
         background-color: #ffffff !important;
         color: #1f2937 !important;
         border-color: #385b96 !important;
     }
 
-    /* Selectbox dropdown text color fix */
     [data-baseweb="popover"] div, [role="option"] div {
         color: #1f2937 !important;
         background-color: #ffffff !important;
     }
 
-    /* Force columns to stack vertically on mobile screens so tables get full width */
     @media (max-width: 900px) {
         .main-header {
             font-size: 20px;
@@ -89,12 +93,16 @@ st.markdown(
     }
     </style>
 
-    <!-- Meta tag injection for strict mobile viewport control -->
+    <!-- JavaScript injection to automatically blur/hide mobile keyboard when dropdowns are changed -->
     <script>
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-        document.getElementsByTagName('head')[0].appendChild(meta);
+        document.addEventListener('click', function(event) {
+            // If user clicks outside an active input, blur it to hide mobile keyboard
+            setTimeout(function() {
+                if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+                    // Let select dropdowns close naturally, blur search inputs after selection
+                }
+            }, 300);
+        }, true);
     </script>
 """,
     unsafe_allow_html=True,
@@ -117,7 +125,6 @@ def load_and_process_data():
         "Top_Performers_Summary",
     ]
 
-    # Master Dictionary mapping Batches to their exact User IDs and Student Names
     student_roster = {
         "Sankalp-JEE-WD-Madhapur-(26-27)-A": {
             "v_4102627828036953": "Kommu Navya",
@@ -343,7 +350,6 @@ def load_and_process_data():
         },
     }
 
-    # Generate quick-lookup dictionaries for ID and Name filtering
     id_to_batch = {}
     id_to_proper_name = {}
     name_to_batch = {}
@@ -460,7 +466,6 @@ def load_and_process_data():
             keep="last",
         )
         
-        # Calculate Rank independently for each Test Name strictly within each Classroom (Batch)
         combined_df["Test Name"] = combined_df["Test Name"].astype(str)
         combined_df["Rank"] = combined_df.groupby(["Classroom", "Test Name"])["Total"].rank(
             ascending=False, method="min"
@@ -681,7 +686,6 @@ def render_top_performers_view(batch_data, is_neet):
         st.info("No test data available for this batch.")
         return
 
-    # Safely extract unique test names as a standard python list
     tests = sorted(batch_data["Test Name"].dropna().astype(str).unique().tolist())
 
     if not tests:
