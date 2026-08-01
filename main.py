@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to fix button text, selectboxes, and prevent text selection
+# Injected CSS for mobile responsiveness, text contrast, and touch-action locks
 st.markdown(
     """
     <style>
