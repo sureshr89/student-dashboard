@@ -9,8 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS and JavaScript to lock tables as read-only (no cell selection) 
-# and automatically dismiss mobile keyboards on selection
+# Injected CSS and JavaScript to force-close mobile keyboard, make tables un-clickable, and style elements
 st.markdown(
     """
     <style>
@@ -93,16 +92,18 @@ st.markdown(
     }
     </style>
 
-    <!-- JavaScript injection to automatically blur/hide mobile keyboard when dropdowns are changed -->
+    <!-- JavaScript injection to automatically dismiss mobile keyboard on selection -->
     <script>
-        document.addEventListener('click', function(event) {
-            // If user clicks outside an active input, blur it to hide mobile keyboard
-            setTimeout(function() {
-                if (document.activeElement && document.activeElement.tagName === 'INPUT') {
-                    // Let select dropdowns close naturally, blur search inputs after selection
-                }
-            }, 300);
-        }, true);
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.body.addEventListener('click', function(e) {
+                setTimeout(() => {
+                    let activeEl = document.activeElement;
+                    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.getAttribute('role') === 'combobox')) {
+                        activeEl.blur();
+                    }
+                }, 200);
+            });
+        });
     </script>
 """,
     unsafe_allow_html=True,
@@ -125,6 +126,7 @@ def load_and_process_data():
         "Top_Performers_Summary",
     ]
 
+    # Master Dictionary mapping Batches to their exact User IDs and Student Names
     student_roster = {
         "Sankalp-JEE-WD-Madhapur-(26-27)-A": {
             "v_4102627828036953": "Kommu Navya",
