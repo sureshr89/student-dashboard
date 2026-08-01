@@ -1,12 +1,17 @@
-import streamlit as st
 import pandas as pd
 import plotly.express as px
+import streamlit as st
 
 # Mobile-friendly layout configuration
-st.set_page_config(page_title="Student Performance Dashboard", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="Student Performance Dashboard",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 # Injected CSS to prevent accidental zooming and optimize for mobile screens
-st.markdown("""
+st.markdown(
+    """
     <style>
     /* Prevent double-tap zooming and pinch-zooming on mobile devices */
     html, body, [class*="css"] {
@@ -51,394 +56,546 @@ st.markdown("""
         meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
         document.getElementsByTagName('head')[0].appendChild(meta);
     </script>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 @st.cache_data()
 def load_and_process_data():
-    sheet_url = "https://docs.google.com/spreadsheets/d/1J8daLHn7YCZTDQ1nCREmQIUCVi3wXuJx9Qv8h1ntay0/export?format=xlsx"
-    try:
-        xls = pd.read_excel(sheet_url, sheet_name=None, engine="openpyxl")
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return pd.DataFrame()
-
-    all_data = []
-    ignore_sheets = ['Executive_Dashboard', 'Comprehensive_Student_Deep_Dive', 'Top_Performers_Summary']
-
-    # Master Dictionary mapping Batches to their exact User IDs and Student Names
-    student_roster = {
-        "Sankalp-JEE-WD-Madhapur-(26-27)-A": {
-            "v_4102627828036953": "Kommu Navya", "v_4102623071293199": "Sharani Ch",
-            "v_4102523600588089": "Nitya Santhoshini",
-            "v_4102628924914015": "Anyasri Vangapalli", "v_4102632679443523": "Chittanoori Sharanya",
-            "v_4102634480786059": "Balakrishna Reddy",
-            "v_4102650842335369": "Sanjana", "v_4102630248538279": "Supriya", "v_4102635833967519": "Varshitha",
-            "v_4102638143043823": "K Jhansi Karthika", "v_4102631802555815": "Juluri Shruthi",
-            "v_4102627329281627": "Paladi manicharitha",
-            "v_4102627597260617": "Venna Sree Roshitha Sai", "v_4102651255800021": "A Ahidvishini",
-            "v_4102614316393167": "B Deekshitha",
-            "v_4102635730773063": "A tejaswini", "v_4102627550531633": "Namratha Patel",
-            "v_4102650638174583": "Sidhiksha",
-            "v_4102631322532821": "Onna akshara sri", "v_4102452464248681": "Yamsani Sahithi",
-            "v_4102627563811191": "Swarna Rekha",
-            "v_4102645865483471": "Ravula Sathwika", "v_4102630403436735": "Kasoju Sahasra",
-            "v_4102635773377785": "Soma Renuka Sri",
-            "v_4102459718100771": "Kadire Praharsha", "v_4102634060004155": "Mula Rujula Goud",
-            "v_4102637023521377": "Ch Veda Pranathi",
-            "v_4102637877391781": "Yamini Pachipala", "v_4102635086792899": "Ananyaa K",
-            "v_4102650971571665": "Nunela Tanuja",
-            "v_4102635084111339": "Eekshitha Devaveth", "v_4102650108877253": "T Srujana Sri",
-            "v_4102635333011287": "P Sanjana",
-            "v_4102631847207581": "Vasavi Kambhampati", "v_4102650740844153": "G Srii Sahasra",
-            "v_4102486214809077": "G Ananya",
-            "v_4102630956969607": "Alampally Snehitha", "v_4102628748993393": "Raga Harshini",
-            "v_4102637560371807": "Pasupuleti Sreevidhya",
-            "v_4102637382658911": "Y Shiridi Sree", "v_4102635764655735": "Rachakonda Varshini",
-            "v_4102637562197363": "Guvva Venu",
-            "v_4102634998788583": "Mallu Sahithya", "v_4102518892161407": "Annapurna", "v_4102443818784431": "Akshaya",
-            "v_4102637886529049": "Lasya Priya Katta", "v_4102512152214977": "Himaja", "v_4102635725361565": "Zaiba"
-        },
-        "Dhristi-JEE-WD-Madhapur-(26-27)-A": {
-            "v_4102645727270519": "A Geethika Manyu", "v_4102401107774195": "Ankitha Boya",
-            "v_4102645828451675": "Kavya Thanmayi Reddy",
-            "v_4102645727827251": "Ruthika Gudi", "v_4102645797622745": "Naga Pranavi",
-            "v_4102483883331591": "Swapnika",
-            "v_4102647244744109": "D Gayathri", "v_4102636602459575": "Sahasra", "v_4102388559707123": "Santosh Reddy",
-            "v_4102647266716239": "Sanjana", "v_4102647394649605": "Akshara", "v_4102647174524251": "Pathangi Archana",
-            "v_4102614218956389": "Chaya Krishna", "v_4102648152223315": "Ramya Sowmya Sri",
-            "v_4102648531881313": "Ashritha Boorla",
-            "v_4102642327198855": "M Srija", "v_4102650134288681": "Rithvi Sree Muttavarapu",
-            "v_4102643056297737": "Gangadevi Vipasyenaa",
-            "v_4102651336517623": "Sindhu", "v_4102647850851099": "Sulochana", "v_4102651562635467": "Dyapa Aishwarya",
-            "v_4102644574580053": "Hemalatha", "v_4102651903094885": "N Sheshanalaxmi",
-            "v_4102652396509247": "Yamsani Vaishnavi",
-            "v_4102652103879301": "Vengala Pranitha", "v_4102477276826079": "N Sandhya Rani",
-            "v_4102652615057209": "K Sharanya",
-            "v_4102512050759011": "Akshaya K", "v_4102634393217841": "Shanmukha Priya",
-            "v_4102652743214533": "Sai Vaishnavi",
-            "v_4102652743818187": "Sravani", "v_4102652782757147": "Durga Rawal", "v_4102652740627381": "Lithika",
-            "v_4102643428135957": "B Disyasree Aishwarya", "v_4102652816566403": "Amima Tahreem",
-            "v_4102653253098055": "M Archana Reddy",
-            "v_4102653184093243": "Tejaswini", "v_4102634120062719": "N Rakshitha", "v_4102653152493329": "Krishnaveni",
-            "v_4102653284309827": "Anjum Khatoon", "v_4102653126102915": "R Rishitha",
-            "v_4102652825965509": "Kuppala Yashaswini",
-            "v_4102653692885741": "Shafiya Jabin", "v_4102464019708919": "D Akshara",
-            "v_4102653706787393": "K Niharika",
-            "v_4102653870942183": "Srinidhi Nandigama"
-        },
-        "Dhristi-JEE-WD-Madhapur-(26-27)-C": {
-            "v_4102643666550411": "Jampala Shanthan Kumar", "v_4102439835972285": "P Rohith",
-            "v_4102643721870649": "Punem Abhinav Sidhardha",
-            "v_4102644496422857": "G Rishith Kumar", "v_4102613269351659": "U Hari Prasad",
-            "v_4102415182975883": "Mani Harsha",
-            "v_4102644808411807": "Elpula Ashwan Chandra", "v_4102644700590709": "Akshith Reddy",
-            "v_4102644700701071": "Karthik",
-            "v_4102489841476749": "Sripada Sai Keerthan", "v_4102645184935871": "Sripada Sai Harsha",
-            "v_4102645551580585": "Ganesh Abhinay Kumar",
-            "v_4102645547833057": "Nakarakommula Shiva Charan", "v_4102644928048957": "Munagala Dhaatre Sree Yajwin",
-            "v_4102627775739499": "B Lukesh Naga Pavan Tej", "v_4102645180293809": "Gaganesh Kanagala",
-            "v_4102644939624363": "Varun Sai",
-            "v_4102435964362941": "Ganesh", "v_4102645868374797": "Siva Sai Manideep Mopuri",
-            "v_4102627775749941": "Tavva Bhanu Prakash Reddy",
-            "v_4102646371497291": "M Sriman", "v_4102533072184425": "J Thaneesh",
-            "v_4102646368654085": "Anurag Varma Tipirisetty",
-            "v_4102646368565483": "Y Srikar Bramha", "v_4102643397901715": "S Venkata Damodar",
-            "v_4102647196005235": "N Suchethan Reddy",
-            "v_4102622732890075": "B Joshua", "v_4102635820106845": "Abhi Vardhan Reddy",
-            "v_4102627777617719": "Yshashikumar",
-            "v_4102647246451011": "Jagjith Krishna Murthi", "v_4102427522159893": "Y Sampreeth",
-            "v_4102456127546577": "Lingapuram Saaiganesan",
-            "v_4102427865228253": "Shashish Pallerla", "v_4102425212615451": "Srivanth Dussa",
-            "v_4102650234363763": "Harshaa Sanapala",
-            "v_4102650890655949": "Mcb Somesh", "v_4102561394089445": "R Pradhasaradhi",
-            "v_4102647992096861": "Amruth Sagar",
-            "v_4102651561481929": "S Arun", "v_4102651530962021": "S Saiteja", "v_4102650371874285": "M Srinad Chary",
-            "v_4102651769793913": "T Sumanth", "v_4102649172509667": "Beniwal Raghav Priyansh",
-            "v_4102637057851105": "D Gagan Ranesh",
-            "v_4102534990079985": "G Vignesh", "v_4102651968411315": "Saharsh", "v_4102651481687971": "Ram Charan Teja",
-            "v_4102652256327965": "Matam Veera Prakash Swami", "v_4102651971090273": "Thuma Shanmukh Reddy",
-            "v_4102434593109347": "M Sai Charan",
-            "v_4102649312245099": "G Dinesh Yadav", "v_4102653374842789": "Hima Shankar Yashwanth",
-            "v_4102648017567625": "Karthikeya Reddy Rachamallu"
-        },
-        "Dhristi-JEE-WD-Madhapur-(26-27)-E": {
-            "v_4102630661117777": "T Sahith", "v_4102645790154227": "P Lokesh Goud", "v_4102647322018111": "B Abhinav",
-            "v_4102647211675845": "Akshith Sayini", "v_4102577186467051": "Johann Alvyn",
-            "v_4102649288557761": "B Kushal",
-            "v_4102651648660565": "Dhanraj Mustala Salient Killer", "v_4102651907979961": "E Sanketh",
-            "v_4102652513900157": "M Hari Kiran",
-            "v_4102652689994975": "M Adi Charan", "v_4102459350652615": "B Bhavyesh",
-            "v_4102409913567341": "K Harshith",
-            "v_4102652786998627": "Ramavath Thirupathi", "v_4102640485523647": "Kannaji Ramcharan",
-            "v_4102653048276523": "R Gopal Charan",
-            "v_4102635674261011": "Nagelli Gowtham", "v_4102652962267887": "B Amruth Varma",
-            "v_4102653313674765": "M Dinesh/U dhinesh",
-            "v_4102653453645603": "G Gnaneshwar", "v_4102650770797103": "N Ajay Reddy",
-            "v_4102623937069667": "Budidapadu Eswar Reddy",
-            "v_4102653662570681": "Macharla Manideep", "v_4102653689961765": "A Sujith",
-            "v_4102653863528969": "S Avinash",
-            "v_4102546153520849": "Sai Vikranth", "v_4102653634589779": "G Sai Varun",
-            "v_4102653972531697": "Nitturi Siddarth",
-            "v_4102650316292857": "Akshay", "v_4102654190368535": "B Vignan", "v_4102654195272069": "S Shiva Sai",
-            "v_4102654393979495": "Harish", "v_4102628254215171": "C Manohar"
-        },
-        "Dhristi-NEET-WD-Madhapur-(26-27)-A": {
-            "v_4102643480684961": "B Vanshika", "v_4102644556073159": "Vishishta", "v_4102637539201437": "K Brammini",
-            "v_4102645831164057": "D Soukhya", "v_4102646329288525": "K Vashishta",
-            "v_4102603971545807": "Konduru Vishwateja",
-            "v_4102437710242015": "Ch Prudhvi Teja", "v_4102647796216789": "Bhanu Teja",
-            "v_4102647863300435": "Geethika",
-            "v_4102648618743607": "Gujjeti Manaswi", "v_4102610689230795": "G Rithika",
-            "v_4102651350713031": "Vadla Manoghnya",
-            "v_4102651578743187": "B Akshaya", "v_4102650579507433": "N Alekhya", "v_4102650579440079": "N Meghana",
-            "v_4102652081777189": "A Nithya Sri", "v_4102631744984203": "Navya Sri",
-            "v_4102651422561677": "Ashreeth Reddy",
-            "v_4102650465823267": "Sidam Gomukhi", "v_4102652782264705": "N Victoria",
-            "v_4102650979247345": "Pasupunoori Samskruthi",
-            "v_4102652488688651": "J Gokul", "v_4102652683013555": "Karthik",
-            "v_4102652572604671": "Chalkuti Kranthi Lakshitha",
-            "v_4102648539804057": "Thadepu Rahul", "v_4102631901998873": "T Akshara",
-            "v_4102653481141521": "Sri Vineetha Sri Vineetha",
-            "v_4102653091443327": "V Rahithya", "v_4102653549632173": "Shravanthi P",
-            "v_4102473017254525": "Sharath Chandra",
-            "v_4102441387257305": "Pundikura Abhignya Reddy Abhignya", "v_4102642920912055": "Sushanth",
-            "v_4102654394357387": "M Gayatri"
-        }
-    }
-
-    # Generate quick-lookup dictionaries for ID and Name filtering
-    id_to_batch = {}
-    id_to_proper_name = {}
-    name_to_batch = {}
-    name_to_proper_name = {}
-
-    for batch, students in student_roster.items():
-        for uid, proper_name in students.items():
-            id_to_batch[uid] = batch
-            id_to_proper_name[uid] = proper_name
-            clean_name_lower = proper_name.strip().lower()
-            name_to_batch[clean_name_lower] = batch
-            name_to_proper_name[clean_name_lower] = proper_name
-
-    for sheet_name, df in xls.items():
-        if any(ign in sheet_name for ign in ignore_sheets):
-            continue
-
-        df.columns = [str(c).strip() for c in df.columns]
-        required_cols = ['Student Name', 'Physics', 'Chemistry', 'Total']
-
-        if all(col in df.columns for col in required_cols):
-            if 'Test Name' not in df.columns:
-                df['Test Name'] = sheet_name
-
-            cols_to_keep = ['Student Name', 'Test Name', 'Physics', 'Chemistry', 'Total']
-            has_uid = 'User ID' in df.columns
-            if has_uid: cols_to_keep.append('User ID')
-            if 'Maths' in df.columns: cols_to_keep.append('Maths')
-            if 'Biology' in df.columns: cols_to_keep.append('Biology')
-
-            subset = df[cols_to_keep].copy()
-            subset = subset.dropna(subset=['Student Name'])
-
-            valid_rows = []
-
-            # Dual-Matching Logic (Match by ID OR Match by Name)
-            for _, test_row in subset.iterrows():
-                sheet_name_val = str(test_row['Student Name']).strip()
-                name_lower = sheet_name_val.lower()
-                uid_val = str(test_row['User ID']).strip() if has_uid else ""
-
-                assigned_batch = None
-                final_clean_name = sheet_name_val
-
-                # 1. Attempt to match using the User ID
-                if uid_val and uid_val in id_to_batch:
-                    assigned_batch = id_to_batch[uid_val]
-                    final_clean_name = id_to_proper_name[uid_val]
-
-                # 2. Fallback to matching exact Student Name
-                elif name_lower in name_to_batch:
-                    assigned_batch = name_to_batch[name_lower]
-                    final_clean_name = name_to_proper_name[name_lower]
-
-                if assigned_batch:
-                    row_dict = test_row.to_dict()
-                    row_dict['Classroom'] = assigned_batch
-                    row_dict['Student Name'] = final_clean_name
-                    valid_rows.append(row_dict)
-
-            if not valid_rows:
-                continue
-
-            processed_subset = pd.DataFrame(valid_rows)
-
-            def categorize_test(tr):
-                name_upper = str(tr['Test Name']).upper()
-                sheet_upper = str(sheet_name).upper()
-                combined = f"{sheet_upper} {name_upper}"
-
-                if 'RT' in combined and 'MAIN' in combined: return 'RT Mains'
-                if 'CT' in combined and 'MAIN' in combined: return 'CT Mains'
-                if 'RT' in combined and 'ADV' in combined: return 'RT Advanced'
-                if 'CT' in combined and 'ADV' in combined: return 'CT Advanced'
-                if 'UT' in combined or 'UNIT' in combined or 'IPE' in combined: return 'Unit Tests'
-                if 'EAPCET' in combined: return 'EAPCET'
-                if 'BASE LINE' in combined or 'BLT' in combined: return 'Base Line Test'
-                if 'NEET' in combined: return 'NEET Tests'
-                return 'Other'
-
-            processed_subset['Category'] = processed_subset.apply(categorize_test, axis=1)
-
-            for subj in ['Physics', 'Chemistry', 'Maths', 'Biology', 'Total']:
-                if subj in processed_subset.columns:
-                    processed_subset[subj] = pd.to_numeric(processed_subset[subj], errors='coerce')
-
-            all_data.append(processed_subset)
-
-    if all_data:
-        combined_df = pd.concat(all_data, ignore_index=True)
-        combined_df = combined_df.drop_duplicates(
-            subset=['Student Name', 'Classroom', 'Test Name', 'Category'], keep='first'
-        )
-        return combined_df
+  sheet_url = "https://docs.google.com/spreadsheets/d/1J8daLHn7YCZTDQ1nCREmQIUCVi3wXuJx9Qv8h1ntay0/export?format=xlsx"
+  try:
+    xls = pd.read_excel(sheet_url, sheet_name=None, engine="openpyxl")
+  except Exception as e:
+    st.error(f"Error loading data: {e}")
     return pd.DataFrame()
+
+  all_data = []
+  ignore_sheets = [
+      "Executive_Dashboard",
+      "Comprehensive_Student_Deep_Dive",
+      "Top_Performers_Summary",
+  ]
+
+  # Master Dictionary mapping Batches to their exact User IDs and Student Names
+  student_roster = {
+      "Sankalp-JEE-WD-Madhapur-(26-27)-A": {
+          "v_4102627828036953": "Kommu Navya",
+          "v_4102623071293199": "Sharani Ch",
+          "v_4102523600588089": "Nitya Santhoshini",
+          "v_4102628924914015": "Anyasri Vangapalli",
+          "v_4102632679443523": "Chittanoori Sharanya",
+          "v_4102634480786059": "Balakrishna Reddy",
+          "v_4102650842335369": "Sanjana",
+          "v_4102630248538279": "Supriya",
+          "v_4102635833967519": "Varshitha",
+          "v_4102638143043823": "K Jhansi Karthika",
+          "v_4102631802555815": "Juluri Shruthi",
+          "v_4102627329281627": "Paladi manicharitha",
+          "v_4102627597260617": "Venna Sree Roshitha Sai",
+          "v_4102651255800021": "A Ahidvishini",
+          "v_4102614316393167": "B Deekshitha",
+          "v_4102635730773063": "A tejaswini",
+          "v_4102627550531633": "Namratha Patel",
+          "v_4102650638174583": "Sidhiksha",
+          "v_4102631322532821": "Onna akshara sri",
+          "v_4102452464248681": "Yamsani Sahithi",
+          "v_4102627563811191": "Swarna Rekha",
+          "v_4102645865483471": "Ravula Sathwika",
+          "v_4102630403436735": "Kasoju Sahasra",
+          "v_4102635773377785": "Soma Renuka Sri",
+          "v_4102459718100771": "Kadire Praharsha",
+          "v_4102634060004155": "Mula Rujula Goud",
+          "v_4102637023521377": "Ch Veda Pranathi",
+          "v_4102637877391781": "Yamini Pachipala",
+          "v_4102635086792899": "Ananyaa K",
+          "v_4102650971571665": "Nunela Tanuja",
+          "v_4102635084111339": "Eekshitha Devaveth",
+          "v_4102650108877253": "T Srujana Sri",
+          "v_4102635333011287": "P Sanjana",
+          "v_4102631847207581": "Vasavi Kambhampati",
+          "v_4102650740844153": "G Srii Sahasra",
+          "v_4102486214809077": "G Ananya",
+          "v_4102630956969607": "Alampally Snehitha",
+          "v_4102628748993393": "Raga Harshini",
+          "v_4102637560371807": "Pasupuleti Sreevidhya",
+          "v_4102637382658911": "Y Shiridi Sree",
+          "v_4102635764655735": "Rachakonda Varshini",
+          "v_4102637562197363": "Guvva Venu",
+          "v_4102634998788583": "Mallu Sahithya",
+          "v_4102518892161407": "Annapurna",
+          "v_4102443818784431": "Akshaya",
+          "v_4102637886529049": "Lasya Priya Katta",
+          "v_4102512152214977": "Himaja",
+          "v_4102635725361565": "Zaiba",
+      },
+      "Dhristi-JEE-WD-Madhapur-(26-27)-A": {
+          "v_4102645727270519": "A Geethika Manyu",
+          "v_4102401107774195": "Ankitha Boya",
+          "v_4102645828451675": "Kavya Thanmayi Reddy",
+          "v_4102645727827251": "Ruthika Gudi",
+          "v_4102645797622745": "Naga Pranavi",
+          "v_4102483883331591": "Swapnika",
+          "v_4102647244744109": "D Gayathri",
+          "v_4102636602459575": "Sahasra",
+          "v_4102388559707123": "Santosh Reddy",
+          "v_4102647266716239": "Sanjana",
+          "v_4102647394649605": "Akshara",
+          "v_4102647174524251": "Pathangi Archana",
+          "v_4102614218956389": "Chaya Krishna",
+          "v_4102648152223315": "Ramya Sowmya Sri",
+          "v_4102648531881313": "Ashritha Boorla",
+          "v_4102642327198855": "M Srija",
+          "v_4102650134288681": "Rithvi Sree Muttavarapu",
+          "v_4102643056297737": "Gangadevi Vipasyenaa",
+          "v_4102651336517623": "Sindhu",
+          "v_4102647850851099": "Sulochana",
+          "v_4102651562635467": "Dyapa Aishwarya",
+          "v_4102644574580053": "Hemalatha",
+          "v_4102651903094885": "N Sheshanalaxmi",
+          "v_4102652396509247": "Yamsani Vaishnavi",
+          "v_4102652103879301": "Vengala Pranitha",
+          "v_4102477276826079": "N Sandhya Rani",
+          "v_4102652615057209": "K Sharanya",
+          "v_4102512050759011": "Akshaya K",
+          "v_4102634393217841": "Shanmukha Priya",
+          "v_4102652743214533": "Sai Vaishnavi",
+          "v_4102652743818187": "Sravani",
+          "v_4102652782757147": "Durga Rawal",
+          "v_4102652740627381": "Lithika",
+          "v_4102643428135957": "B Disyasree Aishwarya",
+          "v_4102652816566403": "Amima Tahreem",
+          "v_4102653253098055": "M Archana Reddy",
+          "v_4102653184093243": "Tejaswini",
+          "v_4102634120062719": "N Rakshitha",
+          "v_4102653152493329": "Krishnaveni",
+          "v_4102653284309827": "Anjum Khatoon",
+          "v_4102653126102915": "R Rishitha",
+          "v_4102652825965509": "Kuppala Yashaswini",
+          "v_4102653692885741": "Shafiya Jabin",
+          "v_4102464019708919": "D Akshara",
+          "v_4102653706787393": "K Niharika",
+          "v_4102653870942183": "Srinidhi Nandigama",
+      },
+      "Dhristi-JEE-WD-Madhapur-(26-27)-C": {
+          "v_4102643666550411": "Jampala Shanthan Kumar",
+          "v_4102439835972285": "P Rohith",
+          "v_4102643721870649": "Punem Abhinav Sidhardha",
+          "v_4102644496422857": "G Rishith Kumar",
+          "v_4102613269351659": "U Hari Prasad",
+          "v_4102415182975883": "Mani Harsha",
+          "v_4102644808411807": "Elpula Ashwan Chandra",
+          "v_4102644700590709": "Akshith Reddy",
+          "v_4102644700701071": "Karthik",
+          "v_4102489841476749": "Sripada Sai Keerthan",
+          "v_4102645184935871": "Sripada Sai Harsha",
+          "v_4102645551580585": "Ganesh Abhinay Kumar",
+          "v_4102645547833057": "Nakarakommula Shiva Charan",
+          "v_4102644928048957": "Munagala Dhaatre Sree Yajwin",
+          "v_4102627775739499": "B Lukesh Naga Pavan Tej",
+          "v_4102645180293809": "Gaganesh Kanagala",
+          "v_4102644939624363": "Varun Sai",
+          "v_4102435964362941": "Ganesh",
+          "v_4102645868374797": "Siva Sai Manideep Mopuri",
+          "v_4102627775749941": "Tavva Bhanu Prakash Reddy",
+          "v_4102646371497291": "M Sriman",
+          "v_4102533072184425": "J Thaneesh",
+          "v_4102646368654085": "Anurag Varma Tipirisetty",
+          "v_4102646368565483": "Y Srikar Bramha",
+          "v_4102643397901715": "S Venkata Damodar",
+          "v_4102647196005235": "N Suchethan Reddy",
+          "v_4102622732890075": "B Joshua",
+          "v_4102635820106845": "Abhi Vardhan Reddy",
+          "v_4102627777617719": "Yshashikumar",
+          "v_4102647246451011": "Jagjith Krishna Murthi",
+          "v_4102427522159893": "Y Sampreeth",
+          "v_4102456127546577": "Lingapuram Saaiganesan",
+          "v_4102427865228253": "Shashish Pallerla",
+          "v_4102425212615451": "Srivanth Dussa",
+          "v_4102650234363763": "Harshaa Sanapala",
+          "v_4102650890655949": "Mcb Somesh",
+          "v_4102561394089445": "R Pradhasaradhi",
+          "v_4102647992096861": "Amruth Sagar",
+          "v_4102651561481929": "S Arun",
+          "v_4102651530962021": "S Saiteja",
+          "v_4102650371874285": "M Srinad Chary",
+          "v_4102651769793913": "T Sumanth",
+          "v_4102649172509667": "Beniwal Raghav Priyansh",
+          "v_4102637057851105": "D Gagan Ranesh",
+          "v_4102534990079985": "G Vignesh",
+          "v_4102651968411315": "Saharsh",
+          "v_4102651481687971": "Ram Charan Teja",
+          "v_4102652256327965": "Matam Veera Prakash Swami",
+          "v_4102651971090273": "Thuma Shanmukh Reddy",
+          "v_4102434593109347": "M Sai Charan",
+          "v_4102649312245099": "G Dinesh Yadav",
+          "v_4102653374842789": "Hima Shankar Yashwanth",
+          "v_4102648017567625": "Karthikeya Reddy Rachamallu",
+      },
+      "Dhristi-JEE-WD-Madhapur-(26-27)-E": {
+          "v_4102630661117777": "T Sahith",
+          "v_4102645790154227": "P Lokesh Goud",
+          "v_4102647322018111": "B Abhinav",
+          "v_4102647211675845": "Akshith Sayini",
+          "v_4102577186467051": "Johann Alvyn",
+          "v_4102649288557761": "B Kushal",
+          "v_4102651648660565": "Dhanraj Mustala Salient Killer",
+          "v_4102651907979961": "E Sanketh",
+          "v_4102652513900157": "M Hari Kiran",
+          "v_4102652689994975": "M Adi Charan",
+          "v_4102459350652615": "B Bhavyesh",
+          "v_4102409913567341": "K Harshith",
+          "v_4102652786998627": "Ramavath Thirupathi",
+          "v_4102640485523647": "Kannaji Ramcharan",
+          "v_4102653048276523": "R Gopal Charan",
+          "v_4102635674261011": "Nagelli Gowtham",
+          "v_4102652962267887": "B Amruth Varma",
+          "v_4102653313674765": "M Dinesh/U dhinesh",
+          "v_4102653453645603": "G Gnaneshwar",
+          "v_4102650770797103": "N Ajay Reddy",
+          "v_4102623937069667": "Budidapadu Eswar Reddy",
+          "v_4102653662570681": "Macharla Manideep",
+          "v_4102653689961765": "A Sujith",
+          "v_4102653863528969": "S Avinash",
+          "v_4102546153520849": "Sai Vikranth",
+          "v_4102653634589779": "G Sai Varun",
+          "v_4102653972531697": "Nitturi Siddarth",
+          "v_4102650316292857": "Akshay",
+          "v_4102654190368535": "B Vignan",
+          "v_4102654195272069": "S Shiva Sai",
+          "v_4102654393979495": "Harish",
+          "v_4102628254215171": "C Manohar",
+      },
+      "Dhristi-NEET-WD-Madhapur-(26-27)-A": {
+          "v_4102643480684961": "B Vanshika",
+          "v_4102644556073159": "Vishishta",
+          "v_4102637539201437": "K Brammini",
+          "v_4102645831164057": "D Soukhya",
+          "v_4102646329288525": "K Vashishta",
+          "v_4102603971545807": "Konduru Vishwateja",
+          "v_4102437710242015": "Ch Prudhvi Teja",
+          "v_4102647796216789": "Bhanu Teja",
+          "v_4102647863300435": "Geethika",
+          "v_4102648618743607": "Gujjeti Manaswi",
+          "v_4102610689230795": "G Rithika",
+          "v_4102651350713031": "Vadla Manoghnya",
+          "v_4102651578743187": "B Akshaya",
+          "v_4102650579507433": "N Alekhya",
+          "v_4102650579440079": "N Meghana",
+          "v_4102652081777189": "A Nithya Sri",
+          "v_4102631744984203": "Navya Sri",
+          "v_4102651422561677": "Ashreeth Reddy",
+          "v_4102650465823267": "Sidam Gomukhi",
+          "v_4102652782264705": "N Victoria",
+          "v_4102650979247345": "Pasupunoori Samskruthi",
+          "v_4102652488688651": "J Gokul",
+          "v_4102652683013555": "Karthik",
+          "v_4102652572604671": "Chalkuti Kranthi Lakshitha",
+          "v_4102648539804057": "Thadepu Rahul",
+          "v_4102631901998873": "T Akshara",
+          "v_4102653481141521": "Sri Vineetha Sri Vineetha",
+          "v_4102653091443327": "V Rahithya",
+          "v_4102653549632173": "Shravanthi P",
+          "v_4102473017254525": "Sharath Chandra",
+          "v_4102441387257305": "Pundikura Abhignya Reddy Abhignya",
+          "v_4102642920912055": "Sushanth",
+          "v_4102654394357387": "M Gayatri",
+      },
+  }
+
+  # Generate quick-lookup dictionaries for ID and Name filtering
+  id_to_batch = {}
+  id_to_proper_name = {}
+  name_to_batch = {}
+  name_to_proper_name = {}
+
+  for batch, students in student_roster.items():
+    for uid, proper_name in students.items():
+      id_to_batch[uid] = batch
+      id_to_proper_name[uid] = proper_name
+      clean_name_lower = proper_name.strip().lower()
+      name_to_batch[clean_name_lower] = batch
+      name_to_proper_name[clean_name_lower] = proper_name
+
+  for sheet_name, df in xls.items():
+    if any(ign in sheet_name for ign in ignore_sheets):
+      continue
+
+    df.columns = [str(c).strip() for c in df.columns]
+    required_cols = ["Student Name", "Physics", "Chemistry", "Total"]
+
+    if all(col in df.columns for col in required_cols):
+      if "Test Name" not in df.columns:
+        df["Test Name"] = sheet_name
+
+      cols_to_keep = ["Student Name", "Test Name", "Physics", "Chemistry", "Total"]
+      has_uid = "User ID" in df.columns
+      if has_uid:
+        cols_to_keep.append("User ID")
+      if "Maths" in df.columns:
+        cols_to_keep.append("Maths")
+      if "Biology" in df.columns:
+        cols_to_keep.append("Biology")
+
+      subset = df[cols_to_keep].copy()
+      subset = subset.dropna(subset=["Student Name"])
+
+      valid_rows = []
+
+      # Dual-Matching Logic (Match by ID OR Match by Name)
+      for _, test_row in subset.iterrows():
+        sheet_name_val = str(test_row["Student Name"]).strip()
+        name_lower = sheet_name_val.lower()
+        uid_val = str(test_row["User ID"]).strip() if has_uid else ""
+
+        assigned_batch = None
+        final_clean_name = sheet_name_val
+
+        # 1. Attempt to match using the User ID
+        if uid_val and uid_val in id_to_batch:
+          assigned_batch = id_to_batch[uid_val]
+          final_clean_name = id_to_proper_name[uid_val]
+
+        # 2. Fallback to matching exact Student Name
+        elif name_lower in name_to_batch:
+          assigned_batch = name_to_batch[name_lower]
+          final_clean_name = name_to_proper_name[name_lower]
+
+        if assigned_batch:
+          row_dict = test_row.to_dict()
+          row_dict["Classroom"] = assigned_batch
+          row_dict["Student Name"] = final_clean_name
+          valid_rows.append(row_dict)
+
+      if not valid_rows:
+        continue
+
+      processed_subset = pd.DataFrame(valid_rows)
+
+      def categorize_test(tr):
+        name_upper = str(tr["Test Name"]).upper()
+        sheet_upper = str(sheet_name).upper()
+        combined = f"{sheet_upper} {name_upper}"
+
+        if "RT" in combined and "MAIN" in combined:
+          return "RT Mains"
+        if "CT" in combined and "MAIN" in combined:
+          return "CT Mains"
+        if "RT" in combined and "ADV" in combined:
+          return "RT Advanced"
+        if "CT" in combined and "ADV" in combined:
+          return "CT Advanced"
+        if (
+            "UT" in combined
+            or "UNIT" in combined
+            or "IPE" in combined
+        ):
+          return "Unit Tests"
+        if "EAPCET" in combined:
+          return "EAPCET"
+        if "BASE LINE" in combined or "BLT" in combined:
+          return "Base Line Test"
+        if "NEET" in combined:
+          return "NEET Tests"
+        return "Other"
+
+      processed_subset["Category"] = processed_subset.apply(
+          categorize_test, axis=1
+      )
+
+      for subj in ["Physics", "Chemistry", "Maths", "Biology", "Total"]:
+        if subj in processed_subset.columns:
+          processed_subset[subj] = pd.to_numeric(
+              processed_subset[subj], errors="coerce"
+          )
+
+      all_data.append(processed_subset)
+
+  if all_data:
+    combined_df = pd.concat(all_data, ignore_index=True)
+    combined_df = combined_df.drop_duplicates(
+        subset=["Student Name", "Classroom", "Test Name", "Category"],
+        keep="first",
+    )
+    return combined_df
+  return pd.DataFrame()
 
 
 def highlight_average_row(row):
-    if row['Test Name'] == 'Average':
-        return ['background-color: #00e600; color: black; font-weight: bold'] * len(row)
-    return ['background-color: #eef2f7; color: #333333'] * len(row)
+  if row["Test Name"] == "Average":
+    return ["background-color: #00e600; color: black; font-weight: bold"] * len(
+        row
+    )
+  return ["background-color: #eef2f7; color: #333333"] * len(row)
 
 
 def render_category_section(student_df, category_name, allowed_subjects):
-    cat_df = student_df[student_df['Category'] == category_name].copy()
+  cat_df = student_df[student_df["Category"] == category_name].copy()
 
-    if cat_df.empty:
-        return
+  if cat_df.empty:
+    return
 
-    cat_df = cat_df.sort_values(by='Test Name')
-    st.markdown(f'<div class="section-header">{category_name}</div>', unsafe_allow_html=True)
+  cat_df = cat_df.sort_values(by="Test Name")
+  st.markdown(
+      f'<div class="section-header">{category_name}</div>',
+      unsafe_allow_html=True,
+  )
 
-    available_cols = ['Test Name']
-    for col in allowed_subjects:
-        if col in cat_df.columns and col not in available_cols:
-            available_cols.append(col)
+  available_cols = ["Test Name"]
+  for col in allowed_subjects:
+    if col in cat_df.columns and col not in available_cols:
+      available_cols.append(col)
 
-    display_df = cat_df[available_cols].copy()
+  display_df = cat_df[available_cols].copy()
 
-    for col in available_cols:
-        if col != 'Test Name':
-            display_df[col] = display_df[col].apply(
-                lambda x: 'Absent' if pd.isna(x) else str(int(round(x)))
-            )
+  for col in available_cols:
+    if col != "Test Name":
+      display_df[col] = display_df[col].apply(
+          lambda x: "Absent" if pd.isna(x) else str(int(round(x)))
+      )
 
-    avgs = {'Test Name': 'Average'}
-    for col in available_cols:
-        if col != 'Test Name':
-            numeric_series = pd.to_numeric(cat_df[col], errors='coerce').dropna()
-            if not numeric_series.empty:
-                avgs[col] = f"{numeric_series.mean():.2f}"
-            else:
-                avgs[col] = 'N/A'
+  avgs = {"Test Name": "Average"}
+  for col in available_cols:
+    if col != "Test Name":
+      numeric_series = pd.to_numeric(cat_df[col], errors="coerce").dropna()
+      if not numeric_series.empty:
+        avgs[col] = f"{numeric_series.mean():.2f}"
+      else:
+        avgs[col] = "N/A"
 
-    display_df = pd.concat([display_df, pd.DataFrame([avgs])], ignore_index=True)
-    styled_df = display_df.style.apply(highlight_average_row, axis=1)
+  display_df = pd.concat(
+      [display_df, pd.DataFrame([avgs])], ignore_index=True
+  )
+  styled_df = display_df.style.apply(highlight_average_row, axis=1)
 
-    column_config_dict = {}
-    for col in display_df.columns:
-        if col != 'Test Name':
-            column_config_dict[col] = st.column_config.TextColumn(col)
+  column_config_dict = {}
+  for col in display_df.columns:
+    if col != "Test Name":
+      column_config_dict[col] = st.column_config.TextColumn(col)
 
-    col_table, col_chart = st.columns([7, 3])
+  col_table, col_chart = st.columns([7, 3])
 
-    with col_table:
-        st.dataframe(styled_df, column_config=column_config_dict, hide_index=True, width="stretch")
+  with col_table:
+    # Added use_container_width=True to table for fluid scaling
+    st.dataframe(
+        styled_df,
+        column_config=column_config_dict,
+        hide_index=True,
+        use_container_width=True,
+    )
 
-    with col_chart:
-        st.markdown(
-            f"<div style='text-align: center; color: #385b96; font-weight: bold; margin-top: 10px;'>Improvement Trajectory</div>",
-            unsafe_allow_html=True)
+  with col_chart:
+    st.markdown(
+        f"<div style='text-align: center; color: #385b96; font-weight: bold;"
+        f" margin-top: 10px;'>Improvement Trajectory</div>",
+        unsafe_allow_html=True,
+    )
 
-        plot_df = cat_df[['Test Name', 'Total']].copy() if 'Total' in cat_df.columns else pd.DataFrame()
-        if not plot_df.empty:
-            plot_df['Total'] = pd.to_numeric(plot_df['Total'], errors='coerce')
-            plot_df = plot_df.dropna(subset=['Total'])
+    plot_df = (
+        cat_df[["Test Name", "Total"]].copy()
+        if "Total" in cat_df.columns
+        else pd.DataFrame()
+    )
+    if not plot_df.empty:
+      plot_df["Total"] = pd.to_numeric(plot_df["Total"], errors="coerce")
+      plot_df = plot_df.dropna(subset=["Total"])
 
-        if not plot_df.empty:
-            fig = px.line(plot_df, x='Test Name', y='Total', markers=True)
+    if not plot_df.empty:
+      fig = px.line(plot_df, x="Test Name", y="Total", markers=True)
 
-            fig.update_xaxes(visible=False)
-            fig.update_yaxes(
-                title=None,
-                showgrid=True,
-                gridcolor='rgba(200, 200, 200, 0.3)',
-                zeroline=False
-            )
+      fig.update_xaxes(visible=False)
+      fig.update_yaxes(
+          title=None,
+          showgrid=True,
+          gridcolor="rgba(200, 200, 200, 0.3)",
+          zeroline=False,
+      )
 
-            fig.update_layout(
-                margin=dict(l=0, r=0, t=10, b=0),
-                height=len(display_df) * 38 + 15,
-                hovermode="x unified",
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
+      fig.update_layout(
+          margin=dict(l=0, r=0, t=10, b=0),
+          height=len(display_df) * 38 + 15,
+          hovermode="x unified",
+          paper_bgcolor="rgba(0,0,0,0)",
+          plot_bgcolor="rgba(0,0,0,0)",
+      )
 
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}, theme="streamlit")
-        else:
-            st.info("No valid test scores for trajectory.")
+      st.plotly_chart(
+          fig,
+          use_container_width=True,
+          config={"displayModeBar": False},
+          theme="streamlit",
+      )
+    else:
+      st.info("No valid test scores for trajectory.")
 
 
 def main():
-    st.markdown('<div class="main-header">Student Performance Dashboard</div>', unsafe_allow_html=True)
+  st.markdown(
+      '<div class="main-header">Student Performance Dashboard</div>',
+      unsafe_allow_html=True,
+  )
 
-    col_btn, _ = st.columns([1, 4])
-    with col_btn:
-        if st.button("🔄 Refresh Data (Fetch New Sheets)"):
-            load_and_process_data.clear()
-            st.rerun()
+  col_btn, _ = st.columns([1, 4])
+  with col_btn:
+    if st.button("🔄 Refresh Data (Fetch New Sheets)"):
+      load_and_process_data.clear()
+      st.rerun()
 
-    with st.spinner('Loading data from Google Sheets...'):
-        df = load_and_process_data()
+  with st.spinner("Loading data from Google Sheets..."):
+    df = load_and_process_data()
 
-    if df.empty:
-        st.warning("No data found matching the specified student user IDs or names.")
-        return
+  if df.empty:
+    st.warning("No data found matching the specified student user IDs or names.")
+    return
 
-    col1, col2 = st.columns(2)
+  col1, col2 = st.columns(2)
 
-    with col1:
-        batches = sorted(df['Classroom'].astype(str).unique())
-        selected_batch = st.selectbox("Select Batch / Classroom:", batches)
+  with col1:
+    batches = sorted(df["Classroom"].astype(str).unique())
+    selected_batch = st.selectbox("Select Batch / Classroom:", batches)
 
-    batch_data: pd.DataFrame = df[df['Classroom'] == selected_batch]
+  batch_data: pd.DataFrame = df[df["Classroom"] == selected_batch]
 
-    with col2:
-        students = sorted(batch_data['Student Name'].astype(str).unique())
-        if students:
-            selected_student = st.selectbox("Select Student Name:", students)
-        else:
-            st.warning("No students found in this batch.")
-            return
-
-    mask = (batch_data['Student Name'] == selected_student)
-    student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
-        subset=['Test Name', 'Category'], keep='first'
-    )
-
-    is_neet = 'NEET' in selected_batch.upper()
-
-    if is_neet:
-        allowed_subjects = ['Physics', 'Chemistry', 'Biology', 'Total']
-        categories = ["Base Line Test", "Unit Tests", "EAPCET", "NEET Tests", "Other"]
+  with col2:
+    students = sorted(batch_data["Student Name"].astype(str).unique())
+    if students:
+      selected_student = st.selectbox("Select Student Name:", students)
     else:
-        allowed_subjects = ['Physics', 'Chemistry', 'Maths', 'Total']
-        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "EAPCET",
-                      "Other"]
+      st.warning("No students found in this batch.")
+      return
 
-    for cat in categories:
-        render_category_section(student_data, cat, allowed_subjects)
+  mask = batch_data["Student Name"] == selected_student
+  student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
+      subset=["Test Name", "Category"], keep="first"
+  )
+
+  is_neet = "NEET" in selected_batch.upper()
+
+  if is_neet:
+    allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
+    categories = [
+        "Base Line Test",
+        "Unit Tests",
+        "EAPCET",
+        "NEET Tests",
+        "Other",
+    ]
+  else:
+    allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
+    categories = [
+        "Base Line Test",
+        "RT Mains",
+        "CT Mains",
+        "RT Advanced",
+        "CT Advanced",
+        "Unit Tests",
+        "EAPCET",
+        "Other",
+    ]
+
+  for cat in categories:
+    render_category_section(student_data, cat, allowed_subjects)
 
 
 if __name__ == "__main__":
-    main()
+  main()
