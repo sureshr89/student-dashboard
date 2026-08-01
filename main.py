@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to fix selectbox background/text contrast, prevent selection, and lock zoom
+# Injected CSS to fix button colors, selectbox contrast, and text visibility
 st.markdown(
     """
     <style>
@@ -40,6 +40,20 @@ st.markdown(
     /* Force all general text to be dark and readable */
     p, span, label, div {
         color: #1f2937;
+    }
+
+    /* Fix Streamlit Navigation Buttons to have a nice blue background and clear white text */
+    .stButton > button {
+        background-color: #385b96 !important;
+        color: #ffffff !important;
+        border: 1px solid #2c4775 !important;
+        font-weight: bold !important;
+        border-radius: 6px !important;
+        width: 100% !important;
+    }
+    .stButton > button:hover {
+        background-color: #2c4775 !important;
+        color: #ffffff !important;
     }
 
     /* Fix Streamlit Selectbox and Input boxes to have clean white background and dark text */
@@ -434,12 +448,6 @@ def load_and_process_data():
                         processed_subset[subj], errors="coerce"
                     )
 
-            # Safely handle Test Name strings for ranking
-            processed_subset["Test Name"] = processed_subset["Test Name"].astype(str)
-            processed_subset["Rank"] = processed_subset.groupby("Test Name")[
-                "Total"
-            ].rank(ascending=False, method="min")
-
             all_data.append(processed_subset)
 
     if all_data:
@@ -447,6 +455,12 @@ def load_and_process_data():
         combined_df = combined_df.drop_duplicates(
             subset=["Student Name", "Classroom", "Test Name", "Category"],
             keep="last",
+        )
+        
+        # Strictly compute rank within each Classroom (Batch) and Test Name independently
+        combined_df["Test Name"] = combined_df["Test Name"].astype(str)
+        combined_df["Rank"] = combined_df.groupby(["Classroom", "Test Name"])["Total"].rank(
+            ascending=False, method="min"
         )
         return combined_df
     return pd.DataFrame()
@@ -660,7 +674,10 @@ def render_top_performers_view(batch_data, is_neet):
     else:
         allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
 
-    # Ensure Test Name is treated safely as strings
+    if batch_data.empty or "Test Name" not in batch_data.columns:
+        st.info("No test data available for this batch.")
+        return
+
     batch_data["Test Name"] = batch_data["Test Name"].astype(str)
     tests = sorted(batch_data["Test Name"].unique())
 
@@ -670,6 +687,9 @@ def render_top_performers_view(batch_data, is_neet):
 
     for test_name in tests:
         test_df = batch_data[batch_data["Test Name"] == test_name].copy()
+        if "Total" not in test_df.columns:
+            continue
+            
         test_df["Total"] = pd.to_numeric(test_df["Total"], errors="coerce")
         test_df = test_df.dropna(subset=["Total"])
 
