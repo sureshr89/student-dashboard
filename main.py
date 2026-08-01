@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to fix button colors, selectbox contrast, and text visibility
+# Injected CSS to fix button text, selectboxes, and prevent text selection
 st.markdown(
     """
     <style>
@@ -42,7 +42,7 @@ st.markdown(
         color: #1f2937;
     }
 
-    /* Fix Streamlit Navigation Buttons to have a nice blue background and clear white text */
+    /* Force Streamlit Navigation Buttons to have blue background and bright white text */
     .stButton > button {
         background-color: #385b96 !important;
         color: #ffffff !important;
@@ -50,6 +50,9 @@ st.markdown(
         font-weight: bold !important;
         border-radius: 6px !important;
         width: 100% !important;
+    }
+    .stButton > button p {
+        color: #ffffff !important;
     }
     .stButton > button:hover {
         background-color: #2c4775 !important;
@@ -457,7 +460,7 @@ def load_and_process_data():
             keep="last",
         )
         
-        # Strictly compute rank within each Classroom (Batch) and Test Name independently
+        # Calculate Rank independently for each Test Name strictly within each Classroom (Batch)
         combined_df["Test Name"] = combined_df["Test Name"].astype(str)
         combined_df["Rank"] = combined_df.groupby(["Classroom", "Test Name"])["Total"].rank(
             ascending=False, method="min"
@@ -678,15 +681,15 @@ def render_top_performers_view(batch_data, is_neet):
         st.info("No test data available for this batch.")
         return
 
-    batch_data["Test Name"] = batch_data["Test Name"].astype(str)
-    tests = sorted(batch_data["Test Name"].unique())
+    # Safely extract unique test names as a standard python list
+    tests = sorted(batch_data["Test Name"].dropna().astype(str).unique().tolist())
 
     if not tests:
         st.info("No test data available for this batch.")
         return
 
     for test_name in tests:
-        test_df = batch_data[batch_data["Test Name"] == test_name].copy()
+        test_df = batch_data[batch_data["Test Name"].astype(str) == test_name].copy()
         if "Total" not in test_df.columns:
             continue
             
