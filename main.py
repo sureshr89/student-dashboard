@@ -416,7 +416,7 @@ def load_and_process_data():
     combined_df = pd.concat(all_data, ignore_index=True)
     combined_df = combined_df.drop_duplicates(
         subset=["Student Name", "Classroom", "Test Name", "Category"],
-        keep="first",
+        keep="last",
     )
     return combined_df
   return pd.DataFrame()
@@ -572,7 +572,7 @@ def main():
 
   mask = batch_data["Student Name"] == selected_student
   student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
-      subset=["Test Name", "Category"], keep="first"
+      subset=["Test Name", "Category"], keep="last"
   )
 
   is_neet = "NEET" in selected_batch.upper()
