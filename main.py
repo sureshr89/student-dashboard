@@ -9,11 +9,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to prevent selection, zooming artifacts, white-on-white text issues, and optimize for mobile
+# Injected CSS to fix selectbox background/text contrast, prevent selection, and lock zoom
 st.markdown(
     """
     <style>
-    /* Prevent text selection and highlighting across the app, especially when interacting with tables or navigation */
+    /* Prevent text selection and highlighting across the app */
     html, body, [class*="css"] {
         touch-action: manipulation;
         -webkit-user-select: none;
@@ -37,9 +37,22 @@ st.markdown(
         padding-bottom: 5px;
     }
 
-    /* Force text and labels in tables and charts to be dark and easily readable */
+    /* Force all general text to be dark and readable */
     p, span, label, div {
         color: #1f2937;
+    }
+
+    /* Fix Streamlit Selectbox and Input boxes to have clean white background and dark text */
+    [data-baseweb="select"] > div, div[data-baseweb="input"] > div {
+        background-color: #ffffff !important;
+        color: #1f2937 !important;
+        border-color: #385b96 !important;
+    }
+
+    /* Selectbox dropdown text color fix */
+    [data-baseweb="popover"] div, [role="option"] div {
+        color: #1f2937 !important;
+        background-color: #ffffff !important;
     }
 
     /* Force columns to stack vertically on mobile screens so tables get full width */
@@ -358,7 +371,6 @@ def load_and_process_data():
 
             valid_rows = []
 
-            # Dual-Matching Logic (Match by ID OR Match by Name)
             for _, test_row in subset.iterrows():
                 sheet_name_val = str(test_row["Student Name"]).strip()
                 name_lower = sheet_name_val.lower()
@@ -422,7 +434,8 @@ def load_and_process_data():
                         processed_subset[subj], errors="coerce"
                     )
 
-            # Compute rank per Test Name within Classroom
+            # Safely handle Test Name strings for ranking
+            processed_subset["Test Name"] = processed_subset["Test Name"].astype(str)
             processed_subset["Rank"] = processed_subset.groupby("Test Name")[
                 "Total"
             ].rank(ascending=False, method="min")
@@ -647,6 +660,8 @@ def render_top_performers_view(batch_data, is_neet):
     else:
         allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
 
+    # Ensure Test Name is treated safely as strings
+    batch_data["Test Name"] = batch_data["Test Name"].astype(str)
     tests = sorted(batch_data["Test Name"].unique())
 
     if not tests:
@@ -661,7 +676,6 @@ def render_top_performers_view(batch_data, is_neet):
         if test_df.empty:
             continue
 
-        # Sort descending by Total score and pick top 3
         top_3 = test_df.sort_values(by="Total", ascending=False).head(3)
 
         st.markdown(f"### 🏆 {test_name}")
@@ -672,7 +686,6 @@ def render_top_performers_view(batch_data, is_neet):
 
         top_display = top_3[display_cols].copy()
 
-        # Format numeric columns cleanly
         for col in top_display.columns:
             if col != "Student Name":
                 top_display[col] = top_display[col].apply(
