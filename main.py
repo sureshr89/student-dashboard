@@ -9,11 +9,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to ensure tables scroll horizontally and prevent text selection/highlighting
+# Injected CSS to prevent selection, zooming artifacts, white-on-white text issues, and optimize for mobile
 st.markdown(
     """
     <style>
-    /* Prevent double-tap zooming, pinch-zooming, and accidental text/table selection */
+    /* Prevent text selection and highlighting across the app, especially when interacting with tables or navigation */
     html, body, [class*="css"] {
         touch-action: manipulation;
         -webkit-user-select: none;
@@ -22,7 +22,7 @@ st.markdown(
         user-select: none;
     }
 
-    .stApp { background-color: #e9f0fd; }
+    .stApp { background-color: #e9f0fd; color: #1f2937; }
 
     .main-header {
         background-color: #385b96; color: white; padding: 12px 15px;
@@ -35,6 +35,11 @@ st.markdown(
         color: #385b96; font-size: 18px; font-weight: bold; margin-top: 20px; margin-bottom: 5px; font-family: sans-serif;
         border-bottom: 2px solid #385b96;
         padding-bottom: 5px;
+    }
+
+    /* Force text and labels in tables and charts to be dark and easily readable */
+    p, span, label, div {
+        color: #1f2937;
     }
 
     /* Force columns to stack vertically on mobile screens so tables get full width */
@@ -436,10 +441,10 @@ def load_and_process_data():
 
 def highlight_average_row(row):
     if row["Test Name"] == "Average":
-        return ["background-color: #00e600; color: black; font-weight: bold"] * len(
+        return ["background-color: #00e600; color: #1f2937; font-weight: bold"] * len(
             row
         )
-    return ["background-color: #eef2f7; color: #333333"] * len(row)
+    return ["background-color: #ffffff; color: #1f2937"] * len(row)
 
 
 def render_category_section(student_df, category_name, allowed_subjects):
@@ -498,11 +503,13 @@ def render_category_section(student_df, category_name, allowed_subjects):
     col_table, col_chart = st.columns([7, 3])
 
     with col_table:
+        # Prevent row selection mode / clicking highlight issues on tables
         st.dataframe(
             styled_df,
             column_config=column_config_dict,
             hide_index=True,
             use_container_width=True,
+            selection_mode=None,
         )
 
     with col_chart:
@@ -536,7 +543,9 @@ def render_category_section(student_df, category_name, allowed_subjects):
                 hovermode="x unified",
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#1f2937"),
             )
+            # Completely lock down chart interaction to prevent all zooming, double-clicking, and panning
             st.plotly_chart(
                 fig,
                 use_container_width=True,
@@ -570,7 +579,6 @@ def render_batch_analysis_view(batch_data, is_neet):
         if cat_data.empty:
             continue
 
-        # Aggregate class averages per test name
         grouped = cat_data.groupby("Test Name")[subject_cols + ["Total"]].mean().reset_index()
         grouped = grouped.sort_values(by="Test Name")
 
@@ -589,21 +597,45 @@ def render_batch_analysis_view(batch_data, is_neet):
                 height=260,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                font=dict(color="#1f2937"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#1f2937"))
             )
-            st.plotly_chart(fig_subj, use_container_width=True, config={"displayModeBar": False}, theme="streamlit")
+            # Lock down chart interaction to prevent all zooming
+            st.plotly_chart(
+                fig_subj, 
+                use_container_width=True, 
+                config={
+                    "displayModeBar": False,
+                    "staticPlot": True,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                }, 
+                theme="streamlit"
+            )
 
         with c2:
             st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Overall Trend</div>", unsafe_allow_html=True)
-            fig_tot = px.line(grouped, x="Test Name", y="Total", markers=True, color_discrete_sequence=["purple"])
+            fig_tot = px.line(grouped, x="Test Name", y="Total", markers=True, color_discrete_sequence=["#385b96"])
             fig_tot.update_layout(
                 margin=dict(l=0, r=0, t=10, b=0),
                 height=260,
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                font=dict(color="#1f2937"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#1f2937"))
             )
-            st.plotly_chart(fig_tot, use_container_width=True, config={"displayModeBar": False}, theme="streamlit")
+            # Lock down chart interaction to prevent all zooming
+            st.plotly_chart(
+                fig_tot, 
+                use_container_width=True, 
+                config={
+                    "displayModeBar": False,
+                    "staticPlot": True,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                }, 
+                theme="streamlit"
+            )
         
         st.markdown("---")
 
@@ -621,11 +653,9 @@ def main():
         st.warning("No data found matching the specified student user IDs or names.")
         return
 
-    # Initialize navigation view state
     if "nav_mode" not in st.session_state:
         st.session_state["nav_mode"] = "student"
 
-    # Three Action Buttons Row
     b1, b2, b3, b4 = st.columns([1.2, 1.3, 1.8, 1.5])
     with b1:
         if st.button("🔄 Refresh Data"):
@@ -640,7 +670,6 @@ def main():
 
     st.markdown("---")
 
-    # Selectbox for Batch filter shared across views
     batches = sorted(df["Classroom"].astype(str).unique())
     selected_batch = st.selectbox("Select Batch / Classroom:", batches)
 
