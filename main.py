@@ -43,11 +43,12 @@ st.markdown(
         color: #1f2937;
     }
 
-    /* Ensure tables are fully scrollable horizontally and fit mobile screens cleanly */
+    /* FIX 1: Ensure tables allow horizontal swipe/scroll without locking touch inputs */
     [data-testid="stDataFrame"] {
         width: 100% !important;
         overflow-x: auto !important;
-        pointer-events: none !important;
+        -webkit-overflow-scrolling: touch !important;
+        pointer-events: auto !important;
     }
 
     /* Force Streamlit Navigation Buttons to have blue background and bright white text */
@@ -95,18 +96,30 @@ st.markdown(
     }
     </style>
 
-    <!-- JavaScript injection to automatically dismiss mobile keyboard on selection -->
+    <!-- FIX 2: Enhanced JavaScript injection to force readonly & inputmode=none on select inputs -->
     <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            document.body.addEventListener('click', function(e) {
-                setTimeout(() => {
-                    let activeEl = document.activeElement;
-                    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.getAttribute('role') === 'combobox')) {
-                        activeEl.blur();
-                    }
-                }, 200);
+        function suppressKeyboard() {
+            let inputs = document.querySelectorAll('[data-baseweb="select"] input');
+            inputs.forEach(input => {
+                input.setAttribute('readonly', 'readonly');
+                input.setAttribute('inputmode', 'none');
             });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            suppressKeyboard();
+            const observer = new MutationObserver(suppressKeyboard);
+            observer.observe(document.body, { childList: true, subtree: true });
         });
+
+        document.body.addEventListener('click', function(e) {
+            setTimeout(() => {
+                let activeEl = document.activeElement;
+                if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.getAttribute('role') === 'combobox')) {
+                    activeEl.blur();
+                }
+            }, 50);
+        }, true);
     </script>
 """,
     unsafe_allow_html=True,
