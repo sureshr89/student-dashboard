@@ -503,7 +503,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
     col_table, col_chart = st.columns([7, 3])
 
     with col_table:
-        # Prevent row selection mode / clicking highlight issues on tables
         st.dataframe(
             styled_df,
             column_config=column_config_dict,
@@ -545,7 +544,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="#1f2937"),
             )
-            # Completely lock down chart interaction to prevent all zooming, double-clicking, and panning
             st.plotly_chart(
                 fig,
                 use_container_width=True,
@@ -600,7 +598,6 @@ def render_batch_analysis_view(batch_data, is_neet):
                 font=dict(color="#1f2937"),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#1f2937"))
             )
-            # Lock down chart interaction to prevent all zooming
             st.plotly_chart(
                 fig_subj, 
                 use_container_width=True, 
@@ -624,7 +621,6 @@ def render_batch_analysis_view(batch_data, is_neet):
                 font=dict(color="#1f2937"),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#1f2937"))
             )
-            # Lock down chart interaction to prevent all zooming
             st.plotly_chart(
                 fig_tot, 
                 use_container_width=True, 
@@ -637,6 +633,58 @@ def render_batch_analysis_view(batch_data, is_neet):
                 theme="streamlit"
             )
         
+        st.markdown("---")
+
+
+def render_top_performers_view(batch_data, is_neet):
+    st.markdown(
+        '<div class="section-header">Batch Top Performers (Top 3 per Test)</div>',
+        unsafe_allow_html=True,
+    )
+
+    if is_neet:
+        allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
+    else:
+        allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
+
+    tests = sorted(batch_data["Test Name"].unique())
+
+    if not tests:
+        st.info("No test data available for this batch.")
+        return
+
+    for test_name in tests:
+        test_df = batch_data[batch_data["Test Name"] == test_name].copy()
+        test_df["Total"] = pd.to_numeric(test_df["Total"], errors="coerce")
+        test_df = test_df.dropna(subset=["Total"])
+
+        if test_df.empty:
+            continue
+
+        # Sort descending by Total score and pick top 3
+        top_3 = test_df.sort_values(by="Total", ascending=False).head(3)
+
+        st.markdown(f"### 🏆 {test_name}")
+
+        display_cols = ["Student Name"] + [s for s in allowed_subjects if s in top_3.columns]
+        if "Rank" in top_3.columns:
+            display_cols.append("Rank")
+
+        top_display = top_3[display_cols].copy()
+
+        # Format numeric columns cleanly
+        for col in top_display.columns:
+            if col != "Student Name":
+                top_display[col] = top_display[col].apply(
+                    lambda x: "N/A" if pd.isna(x) else str(int(round(x)))
+                )
+
+        st.dataframe(
+            top_display,
+            hide_index=True,
+            use_container_width=True,
+            selection_mode=None,
+        )
         st.markdown("---")
 
 
@@ -656,17 +704,21 @@ def main():
     if "nav_mode" not in st.session_state:
         st.session_state["nav_mode"] = "student"
 
-    b1, b2, b3, b4 = st.columns([1.2, 1.3, 1.8, 1.5])
+    # Four Action Buttons Row
+    b1, b2, b3, b4 = st.columns(4)
     with b1:
         if st.button("🔄 Refresh Data"):
             load_and_process_data.clear()
             st.rerun()
     with b2:
-        if st.button("👤 Student Data View"):
+        if st.button("👤 Student Data"):
             st.session_state["nav_mode"] = "student"
     with b3:
-        if st.button("📊 Batch Results Analysis"):
+        if st.button("📊 Batch Analysis"):
             st.session_state["nav_mode"] = "batch"
+    with b4:
+        if st.button("🏆 Top Performers"):
+            st.session_state["nav_mode"] = "topper"
 
     st.markdown("---")
 
@@ -678,6 +730,8 @@ def main():
 
     if st.session_state["nav_mode"] == "batch":
         render_batch_analysis_view(batch_data, is_neet)
+    elif st.session_state["nav_mode"] == "topper":
+        render_top_performers_view(batch_data, is_neet)
     else:
         students = sorted(batch_data["Student Name"].astype(str).unique())
         if students:
