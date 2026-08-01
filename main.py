@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to prevent accidental zooming, handle full width, and stack columns on mobile
+# Injected CSS to ensure tables scroll horizontally without cutting off columns on mobile
 st.markdown(
     """
     <style>
@@ -33,7 +33,7 @@ st.markdown(
         padding-bottom: 5px;
     }
 
-    /* Mobile Responsive Adjustments: Stack table and chart vertically so columns are never cut */
+    /* Force columns to stack vertically on mobile screens so tables get full width */
     @media (max-width: 900px) {
         .main-header {
             font-size: 20px;
@@ -42,7 +42,6 @@ st.markdown(
         .section-header {
             font-size: 16px;
         }
-        /* Force columns to stack on smaller screens */
         [data-testid="column"] {
             width: 100% !important;
             flex: 100% !important;
@@ -478,6 +477,7 @@ def render_category_section(student_df, category_name, allowed_subjects):
   col_table, col_chart = st.columns([7, 3])
 
   with col_table:
+    # use_container_width ensures tables scale cleanly
     st.dataframe(
         styled_df,
         column_config=column_config_dict,
@@ -520,15 +520,14 @@ def render_category_section(student_df, category_name, allowed_subjects):
           plot_bgcolor="rgba(0,0,0,0)",
       )
 
-      # Disabled zoom/pan and mode bar to stop unwanted mobile chart zooming/spikes
+      # Completely lock down chart interaction to prevent mobile zoom/spikes
       st.plotly_chart(
           fig,
           use_container_width=True,
           config={
               "displayModeBar": False,
-              "staticPlot": False,
+              "staticPlot": True,  # Disables all gestures, zooming, and panning completely
               "scrollZoom": False,
-              "editable": False,
           },
           theme="streamlit",
       )
