@@ -68,11 +68,17 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Fix Streamlit Selectbox and Input boxes */
+    /* Fix Streamlit Selectbox and Input boxes - Make them behave like touch triggers */
     [data-baseweb="select"] > div, div[data-baseweb="input"] > div {
         background-color: #ffffff !important;
         color: #1f2937 !important;
         border-color: #385b96 !important;
+    }
+    
+    /* Disable typing/cursor carets inside the select box text view */
+    [data-baseweb="select"] input {
+        caret-color: transparent !important;
+        pointer-events: none !important;
     }
 
     [data-baseweb="popover"] div, [role="option"] div {
@@ -99,11 +105,12 @@ st.markdown(
     <!-- Comprehensive JavaScript injection to suppress mobile soft keyboards on dropdowns -->
     <script>
         function suppressKeyboard() {
-            let inputs = document.querySelectorAll('input');
+            let inputs = document.querySelectorAll('[data-baseweb="select"] input, input[type="text"]');
             inputs.forEach(input => {
                 input.setAttribute('readonly', 'true');
                 input.setAttribute('inputmode', 'none');
                 input.style.caretColor = 'transparent';
+                input.blur();
             });
         }
 
