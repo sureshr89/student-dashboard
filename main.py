@@ -13,9 +13,13 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Prevent double-tap zooming and pinch-zooming on mobile devices */
+    /* Prevent double-tap zooming, pinch-zooming, and accidental text/table selection */
     html, body, [class*="css"] {
         touch-action: manipulation;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
     }
 
     .stApp { background-color: #e9f0fd; }
