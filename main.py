@@ -43,7 +43,7 @@ st.markdown(
         color: #1f2937;
     }
 
-    /* FIX 1: Ensure tables allow horizontal swipe/scroll without locking touch inputs */
+    /* Ensure tables allow horizontal swipe/scroll without locking touch inputs */
     [data-testid="stDataFrame"] {
         width: 100% !important;
         overflow-x: auto !important;
@@ -96,13 +96,14 @@ st.markdown(
     }
     </style>
 
-    <!-- FIX 2: Enhanced JavaScript injection to force readonly & inputmode=none on select inputs -->
+    <!-- Comprehensive JavaScript injection to suppress mobile soft keyboards on dropdowns -->
     <script>
         function suppressKeyboard() {
-            let inputs = document.querySelectorAll('[data-baseweb="select"] input');
+            let inputs = document.querySelectorAll('input');
             inputs.forEach(input => {
-                input.setAttribute('readonly', 'readonly');
+                input.setAttribute('readonly', 'true');
                 input.setAttribute('inputmode', 'none');
+                input.style.caretColor = 'transparent';
             });
         }
 
@@ -112,13 +113,13 @@ st.markdown(
             observer.observe(document.body, { childList: true, subtree: true });
         });
 
-        document.body.addEventListener('click', function(e) {
+        document.addEventListener('click', function(e) {
             setTimeout(() => {
                 let activeEl = document.activeElement;
                 if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.getAttribute('role') === 'combobox')) {
                     activeEl.blur();
                 }
-            }, 50);
+            }, 10);
         }, true);
     </script>
 """,
