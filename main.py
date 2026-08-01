@@ -9,30 +9,133 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Essential Styling
+# Injected CSS and JavaScript to fully lock down selectbox inputs from typing or editing
 st.markdown(
     """
     <style>
+    /* Prevent text selection and highlighting across the app */
+    html, body, [class*="css"] {
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
     .stApp { background-color: #e9f0fd; color: #1f2937; }
+
     .main-header {
         background-color: #385b96; color: white; padding: 12px 15px;
         font-size: 24px; font-weight: bold; font-family: sans-serif; margin-bottom: 20px;
-        border-radius: 5px; text-align: center;
+        border-radius: 5px;
+        text-align: center;
     }
+
     .section-header {
         color: #385b96; font-size: 18px; font-weight: bold; margin-top: 20px; margin-bottom: 5px; font-family: sans-serif;
-        border-bottom: 2px solid #385b96; padding-bottom: 5px;
+        border-bottom: 2px solid #385b96;
+        padding-bottom: 5px;
     }
-    p, span, label, div { color: #1f2937; }
+
+    /* Force all general text to be dark and readable */
+    p, span, label, div {
+        color: #1f2937;
+    }
+
+    /* Ensure tables allow horizontal swipe/scroll without locking touch inputs */
+    [data-testid="stDataFrame"] {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        pointer-events: auto !important;
+    }
+
+    /* Force Streamlit Navigation Buttons to have blue background and bright white text */
     .stButton > button {
-        background-color: #385b96 !important; color: #ffffff !important;
-        border: 1px solid #2c4775 !important; font-weight: bold !important;
-        border-radius: 6px !important; width: 100% !important;
+        background-color: #385b96 !important;
+        color: #ffffff !important;
+        border: 1px solid #2c4775 !important;
+        font-weight: bold !important;
+        border-radius: 6px !important;
+        width: 100% !important;
     }
-    .stButton > button p { color: #ffffff !important; }
-    .stButton > button:hover { background-color: #2c4775 !important; color: #ffffff !important; }
+    .stButton > button p {
+        color: #ffffff !important;
+    }
+    .stButton > button:hover {
+        background-color: #2c4775 !important;
+        color: #ffffff !important;
+    }
+
+    /* Fix Streamlit Selectbox and Input boxes */
+    [data-baseweb="select"] > div, div[data-baseweb="input"] > div {
+        background-color: #ffffff !important;
+        color: #1f2937 !important;
+        border-color: #385b96 !important;
+    }
+
+    /* STRICT LOCK: Completely disable text cursor, typing, and deletions inside select boxes */
+    [data-baseweb="select"] input {
+        caret-color: transparent !important;
+        pointer-events: none !important;
+        user-select: none !important;
+    }
+    
+    [data-baseweb="select"] div[data-testid="stMarkdownContainer"], 
+    [data-baseweb="select"] [role="button"] {
+        pointer-events: auto !important;
+    }
+
+    [data-baseweb="popover"] div, [role="option"] div {
+        color: #1f2937 !important;
+        background-color: #ffffff !important;
+    }
+
+    @media (max-width: 900px) {
+        .main-header {
+            font-size: 20px;
+            padding: 10px;
+        }
+        .section-header {
+            font-size: 16px;
+        }
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 100% !important;
+            min-width: 100% !important;
+        }
+    }
     </style>
-    """,
+
+    <!-- Comprehensive JavaScript injection to suppress mobile soft keyboards and block typing -->
+    <script>
+        function suppressKeyboard() {
+            let inputs = document.querySelectorAll('[data-baseweb="select"] input');
+            inputs.forEach(input => {
+                input.setAttribute('readonly', 'true');
+                input.setAttribute('inputmode', 'none');
+                input.setAttribute('disabled', 'true');
+                input.style.caretColor = 'transparent';
+                input.style.pointerEvents = 'none';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            suppressKeyboard();
+            const observer = new MutationObserver(suppressKeyboard);
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+
+        document.addEventListener('click', function(e) {
+            setTimeout(() => {
+                let activeEl = document.activeElement;
+                if (activeEl && activeEl.tagName === 'INPUT') {
+                    activeEl.blur();
+                }
+            }, 10);
+        }, true);
+    </script>
+""",
     unsafe_allow_html=True,
 )
 
@@ -302,7 +405,13 @@ def load_and_process_data():
             if "Test Name" not in df.columns:
                 df["Test Name"] = sheet_name
 
-            cols_to_keep = ["Student Name", "Test Name", "Physics", "Chemistry", "Total"]
+            cols_to_keep = [
+                "Student Name",
+                "Test Name",
+                "Physics",
+                "Chemistry",
+                "Total",
+            ]
             has_uid = "User ID" in df.columns
             if has_uid:
                 cols_to_keep.append("User ID")
@@ -311,7 +420,9 @@ def load_and_process_data():
             if "Biology" in df.columns:
                 cols_to_keep.append("Biology")
 
-            subset = df[cols_to_keep].copy().dropna(subset=["Student Name"])
+            subset = df[cols_to_keep].copy()
+            subset = subset.dropna(subset=["Student Name"])
+
             valid_rows = []
 
             for _, test_row in subset.iterrows():
@@ -341,7 +452,10 @@ def load_and_process_data():
             processed_subset = pd.DataFrame(valid_rows)
 
             def categorize_test(tr):
-                combined = f"{str(sheet_name).upper()} {str(tr['Test Name']).upper()}"
+                name_upper = str(tr["Test Name"]).upper()
+                sheet_upper = str(sheet_name).upper()
+                combined = f"{sheet_upper} {name_upper}"
+
                 if "RT" in combined and "MAIN" in combined:
                     return "RT Mains"
                 if "CT" in combined and "MAIN" in combined:
@@ -350,7 +464,11 @@ def load_and_process_data():
                     return "RT Advanced"
                 if "CT" in combined and "ADV" in combined:
                     return "CT Advanced"
-                if "UT" in combined or "UNIT" in combined or "IPE" in combined:
+                if (
+                    "UT" in combined
+                    or "UNIT" in combined
+                    or "IPE" in combined
+                ):
                     return "Unit Tests"
                 if "EAPCET" in combined:
                     return "EAPCET"
@@ -360,19 +478,25 @@ def load_and_process_data():
                     return "NEET Tests"
                 return "Other"
 
-            processed_subset["Category"] = processed_subset.apply(categorize_test, axis=1)
+            processed_subset["Category"] = processed_subset.apply(
+                categorize_test, axis=1
+            )
 
             for subj in ["Physics", "Chemistry", "Maths", "Biology", "Total"]:
                 if subj in processed_subset.columns:
-                    processed_subset[subj] = pd.to_numeric(processed_subset[subj], errors="coerce")
+                    processed_subset[subj] = pd.to_numeric(
+                        processed_subset[subj], errors="coerce"
+                    )
 
             all_data.append(processed_subset)
 
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         combined_df = combined_df.drop_duplicates(
-            subset=["Student Name", "Classroom", "Test Name", "Category"], keep="last"
+            subset=["Student Name", "Classroom", "Test Name", "Category"],
+            keep="last",
         )
+        
         combined_df["Test Name"] = combined_df["Test Name"].astype(str)
         combined_df["Rank"] = combined_df.groupby(["Classroom", "Test Name"])["Total"].rank(
             ascending=False, method="min"
@@ -383,125 +507,263 @@ def load_and_process_data():
 
 def highlight_average_row(row):
     if row["Test Name"] == "Average":
-        return ["background-color: #00e600; color: #1f2937; font-weight: bold"] * len(row)
+        return ["background-color: #00e600; color: #1f2937; font-weight: bold"] * len(
+            row
+        )
     return ["background-color: #ffffff; color: #1f2937"] * len(row)
 
 
 def render_category_section(student_df, category_name, allowed_subjects):
     cat_df = student_df[student_df["Category"] == category_name].copy()
+
     if cat_df.empty:
         return
 
     cat_df = cat_df.sort_values(by="Test Name")
-    st.markdown(f'<div class="section-header">{category_name}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="section-header">{category_name}</div>',
+        unsafe_allow_html=True,
+    )
 
-    available_cols = ["Test Name"] + [col for col in allowed_subjects if col in cat_df.columns]
+    available_cols = ["Test Name"]
+    for col in allowed_subjects:
+        if col in cat_df.columns and col not in available_cols:
+            available_cols.append(col)
+    
     if "Rank" in cat_df.columns and "Rank" not in available_cols:
         available_cols.append("Rank")
 
     display_df = cat_df[available_cols].copy()
+
     for col in available_cols:
         if col == "Test Name":
             continue
         elif col == "Rank":
-            display_df[col] = display_df[col].apply(lambda x: "N/A" if pd.isna(x) else str(int(round(x))))
+            display_df[col] = display_df[col].apply(
+                lambda x: "N/A" if pd.isna(x) else str(int(round(x)))
+            )
         else:
-            display_df[col] = display_df[col].apply(lambda x: "Absent" if pd.isna(x) else str(int(round(x))))
+            display_df[col] = display_df[col].apply(
+                lambda x: "Absent" if pd.isna(x) else str(int(round(x)))
+            )
 
     avgs = {"Test Name": "Average"}
     for col in available_cols:
         if col != "Test Name":
             numeric_series = pd.to_numeric(cat_df[col], errors="coerce").dropna()
-            avgs[col] = f"{numeric_series.mean():.2f}" if not numeric_series.empty else "N/A"
+            if not numeric_series.empty:
+                avgs[col] = f"{numeric_series.mean():.2f}"
+            else:
+                avgs[col] = "N/A"
 
-    display_df = pd.concat([display_df, pd.DataFrame([avgs])], ignore_index=True)
+    display_df = pd.concat(
+        [display_df, pd.DataFrame([avgs])], ignore_index=True
+    )
     styled_df = display_df.style.apply(highlight_average_row, axis=1)
 
-    column_config_dict = {col: st.column_config.TextColumn(col) for col in display_df.columns if col != "Test Name"}
+    column_config_dict = {}
+    for col in display_df.columns:
+        if col != "Test Name":
+            column_config_dict[col] = st.column_config.TextColumn(col)
 
     col_table, col_chart = st.columns([7, 3])
+
     with col_table:
-        st.dataframe(styled_df, column_config=column_config_dict, hide_index=True, use_container_width=True)
+        st.dataframe(
+            styled_df,
+            column_config=column_config_dict,
+            hide_index=True,
+            use_container_width=True,
+            selection_mode=None,
+        )
 
     with col_chart:
-        st.markdown("<div style='text-align: center; color: #385b96; font-weight: bold; margin-top: 10px;'>Improvement Trajectory</div>", unsafe_allow_html=True)
-        plot_df = cat_df[["Test Name", "Total"]].copy() if "Total" in cat_df.columns else pd.DataFrame()
+        st.markdown(
+            f"<div style='text-align: center; color: #385b96; font-weight: bold;"
+            f" margin-top: 10px;'>Improvement Trajectory</div>",
+            unsafe_allow_html=True,
+        )
+
+        plot_df = (
+            cat_df[["Test Name", "Total"]].copy()
+            if "Total" in cat_df.columns
+            else pd.DataFrame()
+        )
         if not plot_df.empty:
-            plot_df["Total"] = pd.to_numeric(plot_df["Total"], errors="coerce").dropna()
-            fig = px.line(plot_df.dropna(subset=["Total"]), x="Test Name", y="Total", markers=True)
+            plot_df["Total"] = pd.to_numeric(plot_df["Total"], errors="coerce")
+            plot_df = plot_df.dropna(subset=["Total"])
+
+        if not plot_df.empty:
+            fig = px.line(plot_df, x="Test Name", y="Total", markers=True)
             fig.update_xaxes(visible=False)
-            fig.update_yaxes(title=None, showgrid=True, gridcolor="rgba(200, 200, 200, 0.3)", zeroline=False)
-            fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=220, hovermode="x unified", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#1f2937"))
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "staticPlot": True}, theme="streamlit")
+            fig.update_yaxes(
+                title=None,
+                showgrid=True,
+                gridcolor="rgba(200, 200, 200, 0.3)",
+                zeroline=False,
+            )
+            fig.update_layout(
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=220,
+                hovermode="x unified",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#1f2937"),
+            )
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                config={
+                    "displayModeBar": False,
+                    "staticPlot": True,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                },
+                theme="streamlit",
+            )
         else:
             st.info("No valid test scores for trajectory.")
 
 
 def render_batch_analysis_view(batch_data, is_neet):
-    st.markdown('<div class="section-header">Executive Batch Dashboard - Class Averages</div>', unsafe_allow_html=True)
-    subject_cols = ["Physics", "Chemistry", "Biology"] if is_neet else ["Physics", "Chemistry", "Maths"]
-    categories = ["Base Line Test", "Unit Tests", "EAPCET", "NEET Tests", "Other"] if is_neet else ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "EAPCET", "Other"]
+    st.markdown(
+        '<div class="section-header">Executive Batch Dashboard - Class Averages</div>',
+        unsafe_allow_html=True,
+    )
+
+    if is_neet:
+        subject_cols = ["Physics", "Chemistry", "Biology"]
+        categories = ["Base Line Test", "Unit Tests", "EAPCET", "NEET Tests", "Other"]
+    else:
+        subject_cols = ["Physics", "Chemistry", "Maths"]
+        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "EAPCET", "Other"]
 
     for cat in categories:
         cat_data = batch_data[batch_data["Category"] == cat]
         if cat_data.empty:
             continue
 
-        grouped = cat_data.groupby("Test Name")[subject_cols + ["Total"]].mean().reset_index().sort_values(by="Test Name")
+        grouped = cat_data.groupby("Test Name")[subject_cols + ["Total"]].mean().reset_index()
+        grouped = grouped.sort_values(by="Test Name")
+
         if grouped.empty:
             continue
 
         st.markdown(f"### {cat}")
         c1, c2 = st.columns(2)
+
         with c1:
             st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Subject Trend</div>", unsafe_allow_html=True)
             melted_df = grouped.melt(id_vars=["Test Name"], value_vars=[s for s in subject_cols if s in grouped.columns], var_name="Subject", value_name="Average Marks")
             fig_subj = px.line(melted_df, x="Test Name", y="Average Marks", color="Subject", markers=True)
-            fig_subj.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=260, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#1f2937"), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-            st.plotly_chart(fig_subj, use_container_width=True, config={"displayModeBar": False, "staticPlot": True}, theme="streamlit")
+            fig_subj.update_layout(
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=260,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#1f2937"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#1f2937"))
+            )
+            st.plotly_chart(
+                fig_subj, 
+                use_container_width=True, 
+                config={
+                    "displayModeBar": False,
+                    "staticPlot": True,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                }, 
+                theme="streamlit"
+            )
 
         with c2:
             st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Overall Trend</div>", unsafe_allow_html=True)
             fig_tot = px.line(grouped, x="Test Name", y="Total", markers=True, color_discrete_sequence=["#385b96"])
-            fig_tot.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=260, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#1f2937"))
-            st.plotly_chart(fig_tot, use_container_width=True, config={"displayModeBar": False, "staticPlot": True}, theme="streamlit")
+            fig_tot.update_layout(
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=260,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#1f2937"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#1f2937"))
+            )
+            st.plotly_chart(
+                fig_tot, 
+                use_container_width=True, 
+                config={
+                    "displayModeBar": False,
+                    "staticPlot": True,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                }, 
+                theme="streamlit"
+            )
+        
         st.markdown("---")
 
 
 def render_top_performers_view(batch_data, is_neet):
-    st.markdown('<div class="section-header">Batch Top Performers (Top 3 per Test)</div>', unsafe_allow_html=True)
-    allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"] if is_neet else ["Physics", "Chemistry", "Maths", "Total"]
+    st.markdown(
+        '<div class="section-header">Batch Top Performers (Top 3 per Test)</div>',
+        unsafe_allow_html=True,
+    )
+
+    if is_neet:
+        allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
+    else:
+        allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
 
     if batch_data.empty or "Test Name" not in batch_data.columns:
         st.info("No test data available for this batch.")
         return
 
     tests = sorted(batch_data["Test Name"].dropna().astype(str).unique().tolist())
+
+    if not tests:
+        st.info("No test data available for this batch.")
+        return
+
     for test_name in tests:
         test_df = batch_data[batch_data["Test Name"].astype(str) == test_name].copy()
         if "Total" not in test_df.columns:
             continue
+            
         test_df["Total"] = pd.to_numeric(test_df["Total"], errors="coerce")
-        top_3 = test_df.dropna(subset=["Total"]).sort_values(by="Total", ascending=False).head(3)
-        if top_3.empty:
+        test_df = test_df.dropna(subset=["Total"])
+
+        if test_df.empty:
             continue
 
+        top_3 = test_df.sort_values(by="Total", ascending=False).head(3)
+
         st.markdown(f"### 🏆 {test_name}")
+
         display_cols = ["Student Name"] + [s for s in allowed_subjects if s in top_3.columns]
         if "Rank" in top_3.columns:
             display_cols.append("Rank")
 
         top_display = top_3[display_cols].copy()
+
         for col in top_display.columns:
             if col != "Student Name":
-                top_display[col] = top_display[col].apply(lambda x: "N/A" if pd.isna(x) else str(int(round(x))))
+                top_display[col] = top_display[col].apply(
+                    lambda x: "N/A" if pd.isna(x) else str(int(round(x)))
+                )
 
-        st.dataframe(top_display, hide_index=True, use_container_width=True)
+        st.dataframe(
+            top_display,
+            hide_index=True,
+            use_container_width=True,
+            selection_mode=None,
+        )
         st.markdown("---")
 
 
 def main():
-    st.markdown('<div class="main-header">Student Performance Dashboard</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="main-header">Student Performance Dashboard</div>',
+        unsafe_allow_html=True,
+    )
 
     with st.spinner("Loading data from Google Sheets..."):
         df = load_and_process_data()
@@ -513,6 +775,7 @@ def main():
     if "nav_mode" not in st.session_state:
         st.session_state["nav_mode"] = "student"
 
+    # Four Action Buttons Row
     b1, b2, b3, b4 = st.columns(4)
     with b1:
         if st.button("🔄 Refresh Data"):
@@ -530,8 +793,10 @@ def main():
 
     st.markdown("---")
 
-    selected_batch = st.selectbox("Select Batch / Classroom:", sorted(df["Classroom"].astype(str).unique()))
-    batch_data = df[df["Classroom"] == selected_batch]
+    batches = sorted(df["Classroom"].astype(str).unique())
+    selected_batch = st.selectbox("Select Batch / Classroom:", batches)
+
+    batch_data: pd.DataFrame = df[df["Classroom"] == selected_batch]
     is_neet = "NEET" in selected_batch.upper()
 
     if st.session_state["nav_mode"] == "batch":
@@ -540,19 +805,38 @@ def main():
         render_top_performers_view(batch_data, is_neet)
     else:
         students = sorted(batch_data["Student Name"].astype(str).unique())
-        if not students:
+        if students:
+            selected_student = st.selectbox("Select Student Name:", students)
+        else:
             st.warning("No students found in this batch.")
             return
 
-        selected_student = st.selectbox("Select Student Name:", students)
-        student_data = batch_data[batch_data["Student Name"] == selected_student].drop_duplicates(subset=["Test Name", "Category"], keep="last")
+        mask = batch_data["Student Name"] == selected_student
+        student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
+            subset=["Test Name", "Category"], keep="last"
+        )
 
-        categories = [
-            "Base Line Test", "Unit Tests", "EAPCET", "NEET Tests", "Other"
-        ] if is_neet else [
-            "Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "EAPCET", "Other"
-        ]
-        allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"] if is_neet else ["Physics", "Chemistry", "Maths", "Total"]
+        if is_neet:
+            allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
+            categories = [
+                "Base Line Test",
+                "Unit Tests",
+                "EAPCET",
+                "NEET Tests",
+                "Other",
+            ]
+        else:
+            allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
+            categories = [
+                "Base Line Test",
+                "RT Mains",
+                "CT Mains",
+                "RT Advanced",
+                "CT Advanced",
+                "Unit Tests",
+                "EAPCET",
+                "Other",
+            ]
 
         for cat in categories:
             render_category_section(student_data, cat, allowed_subjects)
