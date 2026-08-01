@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to ensure tables scroll horizontally without cutting off columns on mobile
+# Injected CSS to ensure tables scroll horizontally and prevent text selection/highlighting
 st.markdown(
     """
     <style>
@@ -362,12 +362,9 @@ def load_and_process_data():
                 assigned_batch = None
                 final_clean_name = sheet_name_val
 
-                # 1. Attempt to match using the User ID
                 if uid_val and uid_val in id_to_batch:
                     assigned_batch = id_to_batch[uid_val]
                     final_clean_name = id_to_proper_name[uid_val]
-
-                # 2. Fallback to matching exact Student Name
                 elif name_lower in name_to_batch:
                     assigned_batch = name_to_batch[name_lower]
                     final_clean_name = name_to_proper_name[name_lower]
@@ -462,7 +459,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
         if col in cat_df.columns and col not in available_cols:
             available_cols.append(col)
     
-    # Add Rank column to display
     if "Rank" in cat_df.columns and "Rank" not in available_cols:
         available_cols.append("Rank")
 
@@ -527,7 +523,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
 
         if not plot_df.empty:
             fig = px.line(plot_df, x="Test Name", y="Total", markers=True)
-
             fig.update_xaxes(visible=False)
             fig.update_yaxes(
                 title=None,
@@ -535,7 +530,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
                 gridcolor="rgba(200, 200, 200, 0.3)",
                 zeroline=False,
             )
-
             fig.update_layout(
                 margin=dict(l=0, r=0, t=10, b=0),
                 height=220,
@@ -543,7 +537,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
             )
-
             st.plotly_chart(
                 fig,
                 use_container_width=True,
@@ -559,17 +552,67 @@ def render_category_section(student_df, category_name, allowed_subjects):
             st.info("No valid test scores for trajectory.")
 
 
+def render_batch_analysis_view(batch_data, is_neet):
+    st.markdown(
+        '<div class="section-header">Executive Batch Dashboard - Class Averages</div>',
+        unsafe_allow_html=True,
+    )
+
+    if is_neet:
+        subject_cols = ["Physics", "Chemistry", "Biology"]
+        categories = ["Base Line Test", "Unit Tests", "EAPCET", "NEET Tests", "Other"]
+    else:
+        subject_cols = ["Physics", "Chemistry", "Maths"]
+        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "EAPCET", "Other"]
+
+    for cat in categories:
+        cat_data = batch_data[batch_data["Category"] == cat]
+        if cat_data.empty:
+            continue
+
+        # Aggregate class averages per test name
+        grouped = cat_data.groupby("Test Name")[subject_cols + ["Total"]].mean().reset_index()
+        grouped = grouped.sort_values(by="Test Name")
+
+        if grouped.empty:
+            continue
+
+        st.markdown(f"### {cat}")
+        c1, c2 = st.columns(2)
+
+        with c1:
+            st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Subject Trend</div>", unsafe_allow_html=True)
+            melted_df = grouped.melt(id_vars=["Test Name"], value_vars=[s for s in subject_cols if s in grouped.columns], var_name="Subject", value_name="Average Marks")
+            fig_subj = px.line(melted_df, x="Test Name", y="Average Marks", color="Subject", markers=True)
+            fig_subj.update_layout(
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=260,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_subj, use_container_width=True, config={"displayModeBar": False}, theme="streamlit")
+
+        with c2:
+            st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Overall Trend</div>", unsafe_allow_html=True)
+            fig_tot = px.line(grouped, x="Test Name", y="Total", markers=True, color_discrete_sequence=["purple"])
+            fig_tot.update_layout(
+                margin=dict(l=0, r=0, t=10, b=0),
+                height=260,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_tot, use_container_width=True, config={"displayModeBar": False}, theme="streamlit")
+        
+        st.markdown("---")
+
+
 def main():
     st.markdown(
         '<div class="main-header">Student Performance Dashboard</div>',
         unsafe_allow_html=True,
     )
-
-    col_btn, _ = st.columns([1, 4])
-    with col_btn:
-        if st.button("🔄 Refresh Data (Fetch New Sheets)"):
-            load_and_process_data.clear()
-            st.rerun()
 
     with st.spinner("Loading data from Google Sheets..."):
         df = load_and_process_data()
@@ -578,15 +621,35 @@ def main():
         st.warning("No data found matching the specified student user IDs or names.")
         return
 
-    col1, col2 = st.columns(2)
+    # Initialize navigation view state
+    if "nav_mode" not in st.session_state:
+        st.session_state["nav_mode"] = "student"
 
-    with col1:
-        batches = sorted(df["Classroom"].astype(str).unique())
-        selected_batch = st.selectbox("Select Batch / Classroom:", batches)
+    # Three Action Buttons Row
+    b1, b2, b3, b4 = st.columns([1.2, 1.3, 1.8, 1.5])
+    with b1:
+        if st.button("🔄 Refresh Data"):
+            load_and_process_data.clear()
+            st.rerun()
+    with b2:
+        if st.button("👤 Student Data View"):
+            st.session_state["nav_mode"] = "student"
+    with b3:
+        if st.button("📊 Batch Results Analysis"):
+            st.session_state["nav_mode"] = "batch"
+
+    st.markdown("---")
+
+    # Selectbox for Batch filter shared across views
+    batches = sorted(df["Classroom"].astype(str).unique())
+    selected_batch = st.selectbox("Select Batch / Classroom:", batches)
 
     batch_data: pd.DataFrame = df[df["Classroom"] == selected_batch]
+    is_neet = "NEET" in selected_batch.upper()
 
-    with col2:
+    if st.session_state["nav_mode"] == "batch":
+        render_batch_analysis_view(batch_data, is_neet)
+    else:
         students = sorted(batch_data["Student Name"].astype(str).unique())
         if students:
             selected_student = st.selectbox("Select Student Name:", students)
@@ -594,37 +657,35 @@ def main():
             st.warning("No students found in this batch.")
             return
 
-    mask = batch_data["Student Name"] == selected_student
-    student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
-        subset=["Test Name", "Category"], keep="last"
-    )
+        mask = batch_data["Student Name"] == selected_student
+        student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
+            subset=["Test Name", "Category"], keep="last"
+        )
 
-    is_neet = "NEET" in selected_batch.upper()
+        if is_neet:
+            allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
+            categories = [
+                "Base Line Test",
+                "Unit Tests",
+                "EAPCET",
+                "NEET Tests",
+                "Other",
+            ]
+        else:
+            allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
+            categories = [
+                "Base Line Test",
+                "RT Mains",
+                "CT Mains",
+                "RT Advanced",
+                "CT Advanced",
+                "Unit Tests",
+                "EAPCET",
+                "Other",
+            ]
 
-    if is_neet:
-        allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
-        categories = [
-            "Base Line Test",
-            "Unit Tests",
-            "EAPCET",
-            "NEET Tests",
-            "Other",
-        ]
-    else:
-        allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
-        categories = [
-            "Base Line Test",
-            "RT Mains",
-            "CT Mains",
-            "RT Advanced",
-            "CT Advanced",
-            "Unit Tests",
-            "EAPCET",
-            "Other",
-        ]
-
-    for cat in categories:
-        render_category_section(student_data, cat, allowed_subjects)
+        for cat in categories:
+            render_category_section(student_data, cat, allowed_subjects)
 
 
 if __name__ == "__main__":
