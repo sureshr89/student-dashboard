@@ -9,7 +9,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS and JavaScript to force-close mobile keyboard, make tables un-clickable, and style elements
+# Injected CSS and JavaScript to ensure full table scrollability, 
+# prevent text selection, and eliminate mobile keyboard pop-ups on dropdowns
 st.markdown(
     """
     <style>
@@ -42,8 +43,10 @@ st.markdown(
         color: #1f2937;
     }
 
-    /* Make DataFrames completely un-clickable/un-selectable to prevent cell highlighting */
+    /* Ensure tables are fully scrollable horizontally and fit mobile screens cleanly */
     [data-testid="stDataFrame"] {
+        width: 100% !important;
+        overflow-x: auto !important;
         pointer-events: none !important;
     }
 
@@ -126,7 +129,6 @@ def load_and_process_data():
         "Top_Performers_Summary",
     ]
 
-    # Master Dictionary mapping Batches to their exact User IDs and Student Names
     student_roster = {
         "Sankalp-JEE-WD-Madhapur-(26-27)-A": {
             "v_4102627828036953": "Kommu Navya",
