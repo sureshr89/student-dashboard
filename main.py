@@ -9,8 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS and JavaScript to ensure full table scrollability, 
-# prevent text selection, and eliminate mobile keyboard pop-ups on dropdowns
+# Injected CSS and JavaScript to fully lock down selectbox inputs from typing or editing
 st.markdown(
     """
     <style>
@@ -68,17 +67,23 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Fix Streamlit Selectbox and Input boxes - Make them behave like touch triggers */
+    /* Fix Streamlit Selectbox and Input boxes */
     [data-baseweb="select"] > div, div[data-baseweb="input"] > div {
         background-color: #ffffff !important;
         color: #1f2937 !important;
         border-color: #385b96 !important;
     }
-    
-    /* Disable typing/cursor carets inside the select box text view */
+
+    /* STRICT LOCK: Completely disable text cursor, typing, and deletions inside select boxes */
     [data-baseweb="select"] input {
         caret-color: transparent !important;
         pointer-events: none !important;
+        user-select: none !important;
+    }
+    
+    [data-baseweb="select"] div[data-testid="stMarkdownContainer"], 
+    [data-baseweb="select"] [role="button"] {
+        pointer-events: auto !important;
     }
 
     [data-baseweb="popover"] div, [role="option"] div {
@@ -102,15 +107,16 @@ st.markdown(
     }
     </style>
 
-    <!-- Comprehensive JavaScript injection to suppress mobile soft keyboards on dropdowns -->
+    <!-- Comprehensive JavaScript injection to suppress mobile soft keyboards and block typing -->
     <script>
         function suppressKeyboard() {
-            let inputs = document.querySelectorAll('[data-baseweb="select"] input, input[type="text"]');
+            let inputs = document.querySelectorAll('[data-baseweb="select"] input');
             inputs.forEach(input => {
                 input.setAttribute('readonly', 'true');
                 input.setAttribute('inputmode', 'none');
+                input.setAttribute('disabled', 'true');
                 input.style.caretColor = 'transparent';
-                input.blur();
+                input.style.pointerEvents = 'none';
             });
         }
 
@@ -123,7 +129,7 @@ st.markdown(
         document.addEventListener('click', function(e) {
             setTimeout(() => {
                 let activeEl = document.activeElement;
-                if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.getAttribute('role') === 'combobox')) {
+                if (activeEl && activeEl.tagName === 'INPUT') {
                     activeEl.blur();
                 }
             }, 10);
