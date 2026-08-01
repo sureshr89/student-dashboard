@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS to prevent accidental zooming and optimize for mobile screens
+# Injected CSS to prevent accidental zooming, handle full width, and stack columns on mobile
 st.markdown(
     """
     <style>
@@ -33,8 +33,8 @@ st.markdown(
         padding-bottom: 5px;
     }
 
-    /* Mobile Responsive Adjustments */
-    @media (max-width: 768px) {
+    /* Mobile Responsive Adjustments: Stack table and chart vertically so columns are never cut */
+    @media (max-width: 900px) {
         .main-header {
             font-size: 20px;
             padding: 10px;
@@ -42,9 +42,11 @@ st.markdown(
         .section-header {
             font-size: 16px;
         }
-        /* Force dataframes to scroll horizontally gracefully on small screens */
-        div[data-testid="stDataFrame"] {
-            overflow-x: auto;
+        /* Force columns to stack on smaller screens */
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 100% !important;
+            min-width: 100% !important;
         }
     }
     </style>
@@ -476,7 +478,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
   col_table, col_chart = st.columns([7, 3])
 
   with col_table:
-    # Added use_container_width=True to table for fluid scaling
     st.dataframe(
         styled_df,
         column_config=column_config_dict,
@@ -513,16 +514,22 @@ def render_category_section(student_df, category_name, allowed_subjects):
 
       fig.update_layout(
           margin=dict(l=0, r=0, t=10, b=0),
-          height=len(display_df) * 38 + 15,
+          height=220,
           hovermode="x unified",
           paper_bgcolor="rgba(0,0,0,0)",
           plot_bgcolor="rgba(0,0,0,0)",
       )
 
+      # Disabled zoom/pan and mode bar to stop unwanted mobile chart zooming/spikes
       st.plotly_chart(
           fig,
           use_container_width=True,
-          config={"displayModeBar": False},
+          config={
+              "displayModeBar": False,
+              "staticPlot": False,
+              "scrollZoom": False,
+              "editable": False,
+          },
           theme="streamlit",
       )
     else:
