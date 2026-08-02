@@ -394,6 +394,8 @@ def load_and_process_data():
             name_to_batch[clean_name_lower] = batch
             name_to_proper_name[clean_name_lower] = proper_name
 
+    global_counter = 0  # Tracks chronological order
+
     for sheet_name, df in xls.items():
         if any(ign in sheet_name for ign in ignore_sheets):
             continue
@@ -444,6 +446,8 @@ def load_and_process_data():
                     row_dict = test_row.to_dict()
                     row_dict["Classroom"] = assigned_batch
                     row_dict["Student Name"] = final_clean_name
+                    row_dict["row_index"] = global_counter
+                    global_counter += 1
                     valid_rows.append(row_dict)
 
             if not valid_rows:
@@ -492,8 +496,10 @@ def load_and_process_data():
 
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
-        # FIX: Keep the *last* occurrence instead of the first when duplicates exist, 
-        # meaning newly appended or re-uploaded rows override older ones.
+        
+        # Sort by chronological order index to guarantee newest rows are evaluated last
+        combined_df = combined_df.sort_values(by="row_index", ascending=True)
+
         combined_df = combined_df.drop_duplicates(
             subset=["Student Name", "Classroom", "Test Name", "Category"],
             keep="last",
@@ -814,8 +820,6 @@ def main():
             return
 
         mask = batch_data["Student Name"] == selected_student
-        
-        # FIX: Ensure student view also takes the latest test record (keep="last")
         student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
             subset=["Test Name", "Category"], keep="last"
         )
