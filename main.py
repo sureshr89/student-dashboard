@@ -492,6 +492,8 @@ def load_and_process_data():
 
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
+        # FIX: Keep the *last* occurrence instead of the first when duplicates exist, 
+        # meaning newly appended or re-uploaded rows override older ones.
         combined_df = combined_df.drop_duplicates(
             subset=["Student Name", "Classroom", "Test Name", "Category"],
             keep="last",
@@ -812,6 +814,8 @@ def main():
             return
 
         mask = batch_data["Student Name"] == selected_student
+        
+        # FIX: Ensure student view also takes the latest test record (keep="last")
         student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
             subset=["Test Name", "Category"], keep="last"
         )
