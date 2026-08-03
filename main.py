@@ -343,6 +343,12 @@ def load_and_process_data():
             "v_4102654195272069": "S Shiva Sai",
             "v_4102654393979495": "Harish",
             "v_4102628254215171": "C Manohar",
+            # Newly added/moved students to Batch E:
+            "v_4102644496422857": "G Rishith Kumar",
+            "v_4102642289606091": "Md Sohail",
+            "v_4102653186903085": "Ch Harshavardhan Reddy",
+            "v_4102653253168799": "M Akshay Kiran Reddy",
+            "v_4102650143245809": "K Karthikeya",
         },
         "Dhristi-NEET-WD-Madhapur-(26-27)-A": {
             "v_4102643480684961": "B Vanshika",
@@ -386,13 +392,25 @@ def load_and_process_data():
     name_to_batch = {}
     name_to_proper_name = {}
 
-    for batch, students in student_roster.items():
-        for uid, proper_name in students.items():
-            id_to_batch[uid] = batch
-            id_to_proper_name[uid] = proper_name
-            clean_name_lower = proper_name.strip().lower()
-            name_to_batch[clean_name_lower] = batch
-            name_to_proper_name[clean_name_lower] = proper_name
+    # Crucial Order: Process Batch E LAST so that if student names overlap across old batches, 
+    # Batch E completely overrides and forces them into Batch E exclusively.
+    ordered_batches = [
+        "Sankalp-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-C",
+        "Dhristi-NEET-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-E"
+    ]
+
+    for batch in ordered_batches:
+        if batch in student_roster:
+            students = student_roster[batch]
+            for uid, proper_name in students.items():
+                id_to_batch[uid] = batch
+                id_to_proper_name[uid] = proper_name
+                clean_name_lower = proper_name.strip().lower()
+                name_to_batch[clean_name_lower] = batch
+                name_to_proper_name[clean_name_lower] = proper_name
 
     global_counter = 0  # Tracks chronological order
 
