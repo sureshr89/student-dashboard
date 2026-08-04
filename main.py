@@ -458,10 +458,11 @@ def load_and_process_data():
                     final_clean_name = name_to_proper_name[name_lower]
 
                 if assigned_batch:
-                    # Filter out Class 12 JEE tests for NEET Class 11 students (e.g., Karthik v_4102652683013555)
                     test_str_upper = str(test_row["Test Name"]).upper()
+                    
+                    # Exclude JEE / Class 12 specific tests or results for NEET batch students
                     if assigned_batch.startswith("Dhristi-NEET"):
-                        if "12" in test_str_upper or "JEE" in test_str_upper:
+                        if "12" in test_str_upper or "JEE" in test_str_upper or "MAINS" in test_str_upper or "ADV" in test_str_upper:
                             continue
 
                     row_dict = test_row.to_dict()
@@ -481,7 +482,7 @@ def load_and_process_data():
                 sheet_upper = str(sheet_name).upper()
                 combined = f"{sheet_upper} {name_upper}"
 
-                # Do not mix Part tests with RTs for NEET or general categorization if specified
+                # Completely separate Part Tests from RTs/Mains/Advanced categories
                 if "PART" in combined:
                     return "Part Tests"
                 if "RT" in combined and "MAIN" in combined:
