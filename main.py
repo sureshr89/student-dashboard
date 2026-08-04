@@ -343,7 +343,6 @@ def load_and_process_data():
             "v_4102654195272069": "S Shiva Sai",
             "v_4102654393979495": "Harish",
             "v_4102628254215171": "C Manohar",
-            # Newly added/moved students to Batch E:
             "v_4102644496422857": "G Rishith Kumar",
             "v_4102642289606091": "Md Sohail",
             "v_4102653186903085": "Ch Harshavardhan Reddy",
@@ -392,8 +391,6 @@ def load_and_process_data():
     name_to_batch = {}
     name_to_proper_name = {}
 
-    # Crucial Order: Process Batch E LAST so that if student names overlap across old batches, 
-    # Batch E completely overrides and forces them into Batch E exclusively.
     ordered_batches = [
         "Sankalp-JEE-WD-Madhapur-(26-27)-A",
         "Dhristi-JEE-WD-Madhapur-(26-27)-A",
@@ -412,7 +409,7 @@ def load_and_process_data():
                 name_to_batch[clean_name_lower] = batch
                 name_to_proper_name[clean_name_lower] = proper_name
 
-    global_counter = 0  # Tracks chronological order
+    global_counter = 0
 
     for sheet_name, df in xls.items():
         if any(ign in sheet_name for ign in ignore_sheets):
@@ -461,6 +458,12 @@ def load_and_process_data():
                     final_clean_name = name_to_proper_name[name_lower]
 
                 if assigned_batch:
+                    # Filter out Class 12 JEE tests for NEET Class 11 students (e.g., Karthik v_4102652683013555)
+                    test_str_upper = str(test_row["Test Name"]).upper()
+                    if assigned_batch.startswith("Dhristi-NEET"):
+                        if "12" in test_str_upper or "JEE" in test_str_upper:
+                            continue
+
                     row_dict = test_row.to_dict()
                     row_dict["Classroom"] = assigned_batch
                     row_dict["Student Name"] = final_clean_name
@@ -478,6 +481,9 @@ def load_and_process_data():
                 sheet_upper = str(sheet_name).upper()
                 combined = f"{sheet_upper} {name_upper}"
 
+                # Do not mix Part tests with RTs for NEET or general categorization if specified
+                if "PART" in combined:
+                    return "Part Tests"
                 if "RT" in combined and "MAIN" in combined:
                     return "RT Mains"
                 if "CT" in combined and "MAIN" in combined:
@@ -515,7 +521,6 @@ def load_and_process_data():
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         
-        # Sort by chronological order index to guarantee newest rows are evaluated last
         combined_df = combined_df.sort_values(by="row_index", ascending=True)
 
         combined_df = combined_df.drop_duplicates(
@@ -659,10 +664,10 @@ def render_batch_analysis_view(batch_data, is_neet):
 
     if is_neet:
         subject_cols = ["Physics", "Chemistry", "Biology"]
-        categories = ["Base Line Test", "Unit Tests", "EAPCET", "NEET Tests", "Other"]
+        categories = ["Base Line Test", "Unit Tests", "Part Tests", "EAPCET", "NEET Tests", "Other"]
     else:
         subject_cols = ["Physics", "Chemistry", "Maths"]
-        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "EAPCET", "Other"]
+        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "Part Tests", "EAPCET", "Other"]
 
     for cat in categories:
         cat_data = batch_data[batch_data["Category"] == cat]
@@ -801,7 +806,6 @@ def main():
     if "nav_mode" not in st.session_state:
         st.session_state["nav_mode"] = "student"
 
-    # Four Action Buttons Row
     b1, b2, b3, b4 = st.columns(4)
     with b1:
         if st.button("🔄 Refresh Data"):
@@ -847,6 +851,7 @@ def main():
             categories = [
                 "Base Line Test",
                 "Unit Tests",
+                "Part Tests",
                 "EAPCET",
                 "NEET Tests",
                 "Other",
@@ -860,6 +865,7 @@ def main():
                 "RT Advanced",
                 "CT Advanced",
                 "Unit Tests",
+                "Part Tests",
                 "EAPCET",
                 "Other",
             ]
