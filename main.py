@@ -777,6 +777,96 @@ def render_category_section(student_df, category_name, allowed_subjects):
             st.info("No valid test scores for trajectory.")
 
 
+
+def render_batch_competitive_subject_strength(batch_data, is_neet):
+    """Extra analysis appended to Batch Analysis; existing dashboard remains unchanged."""
+    if is_neet:
+        competitive_categories = [
+            "NEET RT", "NEET CT", "NEET Part Tests",
+            "NEET Practice Tests", "NEET Tests"
+        ]
+        subjects = ["Physics", "Chemistry", "Biology"]
+        exam_label = "NEET"
+    else:
+        competitive_categories = [
+            "RT Mains", "CT Mains", "RT Advanced",
+            "CT Advanced", "Part Tests"
+        ]
+        subjects = ["Physics", "Chemistry", "Maths"]
+        exam_label = "JEE"
+
+    comp_df = batch_data[batch_data["Category"].isin(competitive_categories)].copy()
+    if comp_df.empty:
+        return
+
+    rows = []
+    for subject in subjects:
+        if subject not in comp_df.columns:
+            continue
+        vals = pd.to_numeric(comp_df[subject], errors="coerce").dropna()
+        if not vals.empty:
+            rows.append({
+                "Subject": subject,
+                "Batch Average Marks": round(vals.mean(), 2),
+                "Scores Counted": int(vals.count())
+            })
+
+    if not rows:
+        return
+
+    strength_df = pd.DataFrame(rows)
+
+    st.markdown(
+        f'<div class="section-header">Overall Batch {exam_label} Competitive Exam Subject Analysis</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"Uses only completed {exam_label} competitive exams for the selected batch. "
+        "Unit Tests, Quarterly, Half Yearly, Pre Finals and other school exams are excluded."
+    )
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        fig_bar = px.bar(
+            strength_df,
+            x="Subject",
+            y="Batch Average Marks",
+            text="Batch Average Marks",
+            title=f"{exam_label} – Overall Batch Average Marks by Subject",
+        )
+        fig_bar.update_traces(textposition="outside")
+        fig_bar.update_layout(
+            xaxis_title="Subject",
+            yaxis_title="Batch Average Marks",
+            showlegend=False,
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with c2:
+        pie_df = strength_df[strength_df["Batch Average Marks"] > 0]
+        if not pie_df.empty:
+            fig_pie = px.pie(
+                pie_df,
+                names="Subject",
+                values="Batch Average Marks",
+                title=f"{exam_label} – Batch Subject Strength Distribution",
+                hole=0.25,
+            )
+            fig_pie.update_traces(textposition="inside", textinfo="percent+label")
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+    strongest = strength_df.loc[strength_df["Batch Average Marks"].idxmax()]
+    weakest = strength_df.loc[strength_df["Batch Average Marks"].idxmin()]
+
+    st.markdown(
+        f"**Competitive exam records included:** {len(comp_df)}  \n"
+        f"**Strongest batch subject:** {strongest['Subject']} "
+        f"({strongest['Batch Average Marks']:.2f} average marks)  \n"
+        f"**Needs more attention:** {weakest['Subject']} "
+        f"({weakest['Batch Average Marks']:.2f} average marks)"
+    )
+
 def render_batch_analysis_view(batch_data, is_neet):
     st.markdown(
         '<div class="section-header">Executive Batch Dashboard - Class Averages</div>',
