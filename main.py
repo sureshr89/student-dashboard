@@ -944,6 +944,10 @@ def render_batch_analysis_view(batch_data, is_neet):
         st.markdown("---")
 
 
+    # EXTRA ONLY: overall batch competitive subject analysis at the end.
+    render_batch_competitive_subject_strength(batch_data, is_neet)
+
+
 def render_top_performers_view(batch_data, is_neet):
     st.markdown(
         '<div class="section-header">Batch Top Performers (Top 3 per Test)</div>',
