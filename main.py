@@ -382,6 +382,7 @@ def load_and_process_data():
             "v_4102441387257305": "Pundikura Abhignya Reddy Abhignya",
             "v_4102642920912055": "Sushanth",
             "v_4102654394357387": "M Gayatri",
+            "v_4102652683013555": "Karthik",
         },
     }
 
