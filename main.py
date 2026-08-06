@@ -574,6 +574,97 @@ def highlight_average_row(row):
     return ["background-color: #ffffff; color: #1f2937"] * len(row)
 
 
+
+def render_overall_competitive_subject_strength(student_df, is_neet):
+    """Extra analysis appended to Student Data; existing dashboard remains unchanged."""
+    if is_neet:
+        competitive_categories = [
+            "NEET RT", "NEET CT", "NEET Part Tests",
+            "NEET Practice Tests", "NEET Tests"
+        ]
+        subjects = ["Physics", "Chemistry", "Biology"]
+        exam_label = "NEET"
+    else:
+        competitive_categories = [
+            "RT Mains", "CT Mains", "RT Advanced",
+            "CT Advanced", "Part Tests"
+        ]
+        subjects = ["Physics", "Chemistry", "Maths"]
+        exam_label = "JEE"
+
+    comp_df = student_df[student_df["Category"].isin(competitive_categories)].copy()
+    if comp_df.empty:
+        return
+
+    rows = []
+    for subject in subjects:
+        if subject not in comp_df.columns:
+            continue
+        vals = pd.to_numeric(comp_df[subject], errors="coerce").dropna()
+        if not vals.empty:
+            rows.append({
+                "Subject": subject,
+                "Average Marks": round(vals.mean(), 2),
+                "Tests Counted": int(vals.count())
+            })
+
+    if not rows:
+        return
+
+    strength_df = pd.DataFrame(rows)
+
+    st.markdown(
+        f'<div class="section-header">Overall {exam_label} Competitive Exam Subject Analysis</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"Uses only completed {exam_label} competitive exams. "
+        "School exams such as Unit Tests, Quarterly, Half Yearly and Pre Finals are excluded."
+    )
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        fig_bar = px.bar(
+            strength_df,
+            x="Subject",
+            y="Average Marks",
+            text="Average Marks",
+            title=f"{exam_label} – Average Marks by Subject",
+        )
+        fig_bar.update_traces(textposition="outside")
+        fig_bar.update_layout(
+            xaxis_title="Subject",
+            yaxis_title="Average Marks",
+            showlegend=False,
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with c2:
+        pie_df = strength_df[strength_df["Average Marks"] > 0]
+        if not pie_df.empty:
+            fig_pie = px.pie(
+                pie_df,
+                names="Subject",
+                values="Average Marks",
+                title=f"{exam_label} – Current Subject Strength Distribution",
+                hole=0.25,
+            )
+            fig_pie.update_traces(textposition="inside", textinfo="percent+label")
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+    strongest = strength_df.loc[strength_df["Average Marks"].idxmax()]
+    weakest = strength_df.loc[strength_df["Average Marks"].idxmin()]
+    total_tests = len(comp_df)
+
+    st.markdown(
+        f"**Competitive tests included:** {total_tests}  \n"
+        f"**Strongest subject:** {strongest['Subject']} "
+        f"({strongest['Average Marks']:.2f} average marks)  \n"
+        f"**Needs more attention:** {weakest['Subject']} "
+        f"({weakest['Average Marks']:.2f} average marks)"
+    )
+
 def render_category_section(student_df, category_name, allowed_subjects):
     cat_df = student_df[student_df["Category"] == category_name].copy()
 
@@ -923,6 +1014,9 @@ def main():
 
         for cat in categories:
             render_category_section(student_data, cat, allowed_subjects)
+
+        # EXTRA ONLY: appended at the end of Student Data.
+        render_overall_competitive_subject_strength(student_data, is_neet)
 
 
 if __name__ == "__main__":
