@@ -372,6 +372,7 @@ def load_and_process_data():
             "v_4102652782264705": "N Victoria",
             "v_4102650979247345": "Pasupunoori Samskruthi",
             "v_4102652488688651": "J Gokul",
+            "v_4102652683013555": "Karthik",
             "v_4102652572604671": "Chalkuti Kranthi Lakshitha",
             "v_4102648539804057": "Thadepu Rahul",
             "v_4102631901998873": "T Akshara",
@@ -459,7 +460,6 @@ def load_and_process_data():
                 if assigned_batch:
                     test_str_upper = str(test_row["Test Name"]).upper()
                     
-                    # Exclude JEE / Class 12 specific tests or results for NEET batch students
                     if assigned_batch.startswith("Dhristi-NEET"):
                         if "12" in test_str_upper or "JEE" in test_str_upper or "MAINS" in test_str_upper or "ADV" in test_str_upper:
                             continue
@@ -481,7 +481,11 @@ def load_and_process_data():
                 sheet_upper = str(sheet_name).upper()
                 combined = f"{sheet_upper} {name_upper}"
 
-                # Completely separate Part Tests from RTs/Mains/Advanced categories
+                # Explicitly separate Practice Tests, Revision Tests (RT), and general NEET Tests
+                if "PRACTICE" in combined:
+                    return "Practice Tests"
+                if "RT" in combined:
+                    return "Revision Tests (RT)"
                 if "PART" in combined:
                     return "Part Tests"
                 if "RT" in combined and "MAIN" in combined:
@@ -664,7 +668,7 @@ def render_batch_analysis_view(batch_data, is_neet):
 
     if is_neet:
         subject_cols = ["Physics", "Chemistry", "Biology"]
-        categories = ["Base Line Test", "Unit Tests", "Part Tests", "EAPCET", "NEET Tests", "Other"]
+        categories = ["Base Line Test", "Unit Tests", "Practice Tests", "Revision Tests (RT)", "Part Tests", "EAPCET", "NEET Tests", "Other"]
     else:
         subject_cols = ["Physics", "Chemistry", "Maths"]
         categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "Part Tests", "EAPCET", "Other"]
@@ -851,6 +855,8 @@ def main():
             categories = [
                 "Base Line Test",
                 "Unit Tests",
+                "Practice Tests",
+                "Revision Tests (RT)",
                 "Part Tests",
                 "EAPCET",
                 "NEET Tests",
