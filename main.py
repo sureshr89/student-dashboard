@@ -486,6 +486,30 @@ def load_and_process_data():
                 sheet_upper = str(sheet_name).upper()
                 combined = f"{sheet_upper} {name_upper}"
 
+                # Keep each major test pattern separate
+                if "PRE FINAL 1" in combined or "PREFINAL 1" in combined or "PRE-FINAL 1" in combined:
+                    return "Pre Final 1"
+                if "PRE FINAL 2" in combined or "PREFINAL 2" in combined or "PRE-FINAL 2" in combined:
+                    return "Pre Final 2"
+                if "PRE FINAL 3" in combined or "PREFINAL 3" in combined or "PRE-FINAL 3" in combined:
+                    return "Pre Final 3"
+                if "HALF YEAR" in combined or "HALFYEAR" in combined or "HALF-YEAR" in combined:
+                    return "Half Yearly"
+                if "QUARTERLY" in combined or "QUARTER" in combined:
+                    return "Quarterly"
+
+                if "EAPCET" in combined and "RT" in combined:
+                    return "EAPCET RT"
+                if "EAPCET" in combined and "CT" in combined:
+                    return "EAPCET CT"
+
+                if "NEET" in combined and "PART" in combined:
+                    return "NEET Part Tests"
+                if "NEET" in combined and "RT" in combined:
+                    return "NEET RT"
+                if "NEET" in combined and "CT" in combined:
+                    return "NEET CT"
+
                 # Completely separate Part Tests from RTs/Mains/Advanced categories
                 if "PART" in combined:
                     return "Part Tests"
@@ -669,10 +693,10 @@ def render_batch_analysis_view(batch_data, is_neet):
 
     if is_neet:
         subject_cols = ["Physics", "Chemistry", "Biology"]
-        categories = ["Base Line Test", "Unit Tests", "Part Tests", "EAPCET", "NEET Tests", "Other"]
+        categories = ["Base Line Test", "NEET RT", "NEET CT", "NEET Part Tests", "NEET Tests", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Part Tests", "EAPCET", "Other"]
     else:
         subject_cols = ["Physics", "Chemistry", "Maths"]
-        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Unit Tests", "Part Tests", "EAPCET", "Other"]
+        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Part Tests", "EAPCET RT", "EAPCET CT", "EAPCET", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Other"]
 
     for cat in categories:
         cat_data = batch_data[batch_data["Category"] == cat]
@@ -841,7 +865,12 @@ def main():
     else:
         students = sorted(batch_data["Student Name"].astype(str).unique())
         if students:
-            selected_student = st.selectbox("Select Student Name:", students)
+            selected_student = st.radio(
+                "Select Student Name:",
+                students,
+                index=0,
+                key="student_name_click_only",
+            )
         else:
             st.warning("No students found in this batch.")
             return
@@ -855,10 +884,18 @@ def main():
             allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
             categories = [
                 "Base Line Test",
+                "NEET RT",
+                "NEET CT",
+                "NEET Part Tests",
+                "NEET Tests",
                 "Unit Tests",
+                "Quarterly",
+                "Half Yearly",
+                "Pre Final 1",
+                "Pre Final 2",
+                "Pre Final 3",
                 "Part Tests",
                 "EAPCET",
-                "NEET Tests",
                 "Other",
             ]
         else:
@@ -869,9 +906,16 @@ def main():
                 "CT Mains",
                 "RT Advanced",
                 "CT Advanced",
-                "Unit Tests",
                 "Part Tests",
+                "EAPCET RT",
+                "EAPCET CT",
                 "EAPCET",
+                "Unit Tests",
+                "Quarterly",
+                "Half Yearly",
+                "Pre Final 1",
+                "Pre Final 2",
+                "Pre Final 3",
                 "Other",
             ]
 
