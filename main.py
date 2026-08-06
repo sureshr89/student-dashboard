@@ -114,7 +114,6 @@ st.markdown(
             inputs.forEach(input => {
                 input.setAttribute('readonly', 'true');
                 input.setAttribute('inputmode', 'none');
-                input.setAttribute('disabled', 'true');
                 input.style.caretColor = 'transparent';
                 input.style.pointerEvents = 'none';
             });
@@ -503,6 +502,8 @@ def load_and_process_data():
                 if "EAPCET" in combined and "CT" in combined:
                     return "EAPCET CT"
 
+                if "NEET" in combined and "PRACTICE" in combined:
+                    return "NEET Practice Tests"
                 if "NEET" in combined and "PART" in combined:
                     return "NEET Part Tests"
                 if "NEET" in combined and "RT" in combined:
@@ -693,7 +694,7 @@ def render_batch_analysis_view(batch_data, is_neet):
 
     if is_neet:
         subject_cols = ["Physics", "Chemistry", "Biology"]
-        categories = ["Base Line Test", "NEET RT", "NEET CT", "NEET Part Tests", "NEET Tests", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Part Tests", "EAPCET", "Other"]
+        categories = ["Base Line Test", "NEET RT", "NEET CT", "NEET Part Tests", "NEET Practice Tests", "NEET Tests", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Part Tests", "EAPCET", "Other"]
     else:
         subject_cols = ["Physics", "Chemistry", "Maths"]
         categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Part Tests", "EAPCET RT", "EAPCET CT", "EAPCET", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Other"]
@@ -865,11 +866,11 @@ def main():
     else:
         students = sorted(batch_data["Student Name"].astype(str).unique())
         if students:
-            selected_student = st.radio(
+            selected_student = st.selectbox(
                 "Select Student Name:",
                 students,
                 index=0,
-                key="student_name_click_only",
+                key="student_name_dropdown",
             )
         else:
             st.warning("No students found in this batch.")
@@ -887,6 +888,7 @@ def main():
                 "NEET RT",
                 "NEET CT",
                 "NEET Part Tests",
+                "NEET Practice Tests",
                 "NEET Tests",
                 "Unit Tests",
                 "Quarterly",
