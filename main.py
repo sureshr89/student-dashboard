@@ -309,6 +309,7 @@ def load_and_process_data():
             "v_4102649312245099": "G Dinesh Yadav",
             "v_4102653374842789": "Hima Shankar Yashwanth",
             "v_4102648017567625": "Karthikeya Reddy Rachamallu",
+            "v_4102652683013555": "Karthik",  # Explicitly assigned to Batch C only
         },
         "Dhristi-JEE-WD-Madhapur-(26-27)-E": {
             "v_4102630661117777": "T Sahith",
@@ -372,7 +373,7 @@ def load_and_process_data():
             "v_4102652782264705": "N Victoria",
             "v_4102650979247345": "Pasupunoori Samskruthi",
             "v_4102652488688651": "J Gokul",
-            "v_4102652683013555": "Karthik",
+            "v_4102652683013555_NEET_DUPLICATE": "Karthik",  # Removed duplicate key conflict by scoping or handling correctly
             "v_4102652572604671": "Chalkuti Kranthi Lakshitha",
             "v_4102648539804057": "Thadepu Rahul",
             "v_4102631901998873": "T Akshara",
@@ -399,15 +400,19 @@ def load_and_process_data():
         "Dhristi-JEE-WD-Madhapur-(26-27)-E"
     ]
 
+    # Explicit mapping build order ensures Batch C takes precedence for "Karthik" via User ID v_4102652683013555
     for batch in ordered_batches:
         if batch in student_roster:
             students = student_roster[batch]
             for uid, proper_name in students.items():
-                id_to_batch[uid] = batch
-                id_to_proper_name[uid] = proper_name
+                clean_uid = uid.split("_NEET_DUPLICATE")[0] # handle clean key lookup
+                id_to_batch[clean_uid] = batch
+                id_to_proper_name[clean_uid] = proper_name
                 clean_name_lower = proper_name.strip().lower()
-                name_to_batch[clean_name_lower] = batch
-                name_to_proper_name[clean_name_lower] = proper_name
+                # Do not map generic duplicate names broadly if IDs are present, but map unique names
+                if clean_name_lower not in name_to_batch:
+                    name_to_batch[clean_name_lower] = batch
+                    name_to_proper_name[clean_name_lower] = proper_name
 
     global_counter = 0
 
@@ -450,6 +455,7 @@ def load_and_process_data():
                 assigned_batch = None
                 final_clean_name = sheet_name_val
 
+                # Prioritize User ID mapping to avoid cross-batch contamination for common names like Karthik
                 if uid_val and uid_val in id_to_batch:
                     assigned_batch = id_to_batch[uid_val]
                     final_clean_name = id_to_proper_name[uid_val]
@@ -482,17 +488,21 @@ def load_and_process_data():
                 sheet_upper = str(sheet_name).upper()
                 combined = f"{sheet_upper} {name_upper}"
 
-                # Completely separate Part Tests from RTs/Mains/Advanced categories
+                # Strict checking order: Isolate Part Tests completely from RT / CT / Mains / Advanced
                 if "PART" in combined:
                     return "Part Tests"
                 if "RT" in combined and "MAIN" in combined:
                     return "RT Mains"
                 if "CT" in combined and "MAIN" in combined:
                     return "CT Mains"
-                if "RT" in combined and "ADV" in combined:
+                if "RT" in combined and ("ADV" in combined or "ADVANCED" in combined):
                     return "RT Advanced"
-                if "CT" in combined and "ADV" in combined:
+                if "CT" in combined and ("ADV" in combined or "ADVANCED" in combined):
                     return "CT Advanced"
+                if "RT" in combined:
+                    return "RT Mains"  # default general RT fallback if main/adv not specified
+                if "CT" in combined:
+                    return "CT Mains"  # default general CT fallback if main/adv not specified
                 if (
                     "UT" in combined
                     or "UNIT" in combined
