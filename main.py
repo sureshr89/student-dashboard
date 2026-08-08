@@ -1007,55 +1007,51 @@ def render_top_performers_view(batch_data, is_neet):
 
 
 def render_student_search_view(df):
-    """Search students across all batches and show their complete results."""
+    """Search students across all batches using Streamlit's searchable dropdown."""
     st.markdown(
         '<div class="section-header">🔎 Search Student Results</div>',
         unsafe_allow_html=True,
     )
     st.caption(
-        "Search by student name across all batches. If the same name appears in more than one batch, "
-        "the batch name is shown so the correct student can be selected."
+        "Start typing the student's name. Suggestions appear immediately in the dropdown. "
+        "The batch is shown so students with the same name can be identified correctly."
     )
 
-    search_text = st.text_input(
-        "Enter Student Name:",
-        placeholder="Type part or all of the student's name",
-        key="student_search_input",
+    # Build unique Student + Batch choices across the complete dataset.
+    matches = (
+        df[["Student Name", "Classroom"]]
+        .dropna(subset=["Student Name", "Classroom"])
+        .drop_duplicates()
+        .sort_values(by=["Student Name", "Classroom"])
+        .reset_index(drop=True)
     )
-
-    if not search_text.strip():
-        st.info("Enter a student name to search across all batches.")
-        return
-
-    search_lower = search_text.strip().lower()
-
-    matches = df[
-        df["Student Name"].astype(str).str.lower().str.contains(
-            search_lower, na=False, regex=False
-        )
-    ][["Student Name", "Classroom"]].drop_duplicates()
 
     if matches.empty:
-        st.warning(f"No student found matching '{search_text.strip()}'.")
+        st.warning("No students found.")
         return
 
-    matches = matches.sort_values(
-        by=["Student Name", "Classroom"]
-    ).reset_index(drop=True)
-
-    # Show name + batch together, especially useful when names are duplicated.
     student_options = [
         f"{row['Student Name']}  |  {row['Classroom']}"
         for _, row in matches.iterrows()
     ]
 
+    # Streamlit selectbox has built-in type-to-search suggestions.
+    # Unlike the normal Student Data dropdown, this search box is intentionally
+    # searchable so suggestions appear while the user types.
     selected_option = st.selectbox(
-        "Select Student (Batch shown for identification):",
+        "🔎 Search Student Name:",
         student_options,
+        index=None,
+        placeholder="Type student name to see suggestions...",
         key="searched_student_option",
     )
 
-    selected_row = matches.iloc[student_options.index(selected_option)]
+    if selected_option is None:
+        st.info("Start typing a student name above and select the required student.")
+        return
+
+    selected_index = student_options.index(selected_option)
+    selected_row = matches.iloc[selected_index]
     selected_student = selected_row["Student Name"]
     selected_batch = selected_row["Classroom"]
 
