@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -1124,136 +1123,6 @@ def render_student_search_view(df):
 
 
 
-def render_ask_me_view():
-    """Educational Ask Me page with native Google-style searchable topic suggestions."""
-    # This marker is used only to unlock typing in the Ask Me selectbox.
-    st.markdown(
-        """
-        <style>
-        /* Ask Me only: allow typing/searching in its topic dropdown.
-           Existing Student/Batch dropdowns remain locked as before. */
-        div[data-testid="stVerticalBlock"]:has(
-            div[data-testid="stMarkdownContainer"] .ask-me-marker
-        ) [data-baseweb="select"] input {
-            pointer-events: auto !important;
-            user-select: text !important;
-            caret-color: auto !important;
-        }
-        </style>
-        <span class="ask-me-marker"></span>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        '<div class="section-header">🤖 Ask Me – Learn a Topic</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "Start typing a Maths, Physics, Chemistry or Biology topic. "
-        "Suggestions appear inside the search box."
-    )
-
-    topics = [
-        # Maths
-        "Maths - Quadratic Equations", "Maths - Permutations and Combinations",
-        "Maths - Probability", "Maths - Straight Lines", "Maths - Circles",
-        "Maths - Limits", "Maths - Continuity and Differentiability",
-        "Maths - Differentiation", "Maths - Applications of Derivatives",
-        "Maths - Integration", "Maths - Matrices", "Maths - Determinants",
-        "Maths - Vectors", "Maths - Three Dimensional Geometry",
-        "Maths - Complex Numbers", "Maths - Sequence and Series",
-        "Maths - Binomial Theorem", "Maths - Trigonometry",
-        # Physics
-        "Physics - Kinematics", "Physics - Newton's Laws of Motion",
-        "Physics - Work Energy and Power", "Physics - Circular Motion",
-        "Physics - Centre of Mass", "Physics - Rotational Motion",
-        "Physics - Gravitation", "Physics - Simple Harmonic Motion",
-        "Physics - Waves", "Physics - Thermodynamics", "Physics - Kinetic Theory",
-        "Physics - Electrostatics", "Physics - Current Electricity",
-        "Physics - Magnetism", "Physics - Electromagnetic Induction",
-        "Physics - Alternating Current", "Physics - Ray Optics",
-        "Physics - Wave Optics", "Physics - Modern Physics", "Physics - Semiconductors",
-        # Chemistry
-        "Chemistry - Atomic Structure", "Chemistry - Periodic Table",
-        "Chemistry - Chemical Bonding", "Chemistry - States of Matter",
-        "Chemistry - Thermodynamics", "Chemistry - Equilibrium",
-        "Chemistry - Redox Reactions", "Chemistry - Solutions",
-        "Chemistry - Electrochemistry", "Chemistry - Chemical Kinetics",
-        "Chemistry - Coordination Compounds", "Chemistry - Organic Chemistry Basics",
-        "Chemistry - Hydrocarbons", "Chemistry - Alcohols Phenols and Ethers",
-        "Chemistry - Aldehydes Ketones and Carboxylic Acids", "Chemistry - Amines",
-        # Biology
-        "Biology - Cell Structure", "Biology - Biomolecules", "Biology - Cell Division",
-        "Biology - Photosynthesis", "Biology - Respiration", "Biology - Plant Growth",
-        "Biology - Human Digestion", "Biology - Human Respiration",
-        "Biology - Circulation", "Biology - Excretion", "Biology - Nervous System",
-        "Biology - Endocrine System", "Biology - Reproduction", "Biology - Genetics",
-        "Biology - Molecular Basis of Inheritance", "Biology - Evolution",
-        "Biology - Human Health and Disease", "Biology - Ecology",
-    ]
-
-    # Native Streamlit selectbox is searchable as the user types:
-    # it opens a dropdown and filters suggestions immediately, like a search box.
-    selected = st.selectbox(
-        "🔎 Search topic:",
-        topics,
-        index=None,
-        placeholder="Type: maths, physics, chemistry or biology topic...",
-        key="ask_me_topic_search",
-    )
-
-    if selected is None:
-        st.info("Start typing in the box above to see topic suggestions.")
-        return
-
-    topic = selected.split(" - ", 1)[-1]
-
-    st.markdown(f"**Selected:** {selected}")
-
-    if st.button("✨ Explain", type="primary", key="ask_me_submit"):
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            try:
-                api_key = st.secrets.get("OPENAI_API_KEY", "")
-            except Exception:
-                api_key = ""
-
-        if not api_key:
-            st.warning(
-                "AI is not connected yet. Add OPENAI_API_KEY to Streamlit Secrets."
-            )
-            return
-
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
-
-            response = client.responses.create(
-                model="gpt-5-mini",
-                instructions="""
-You are a friendly educational assistant for Maths, Physics, Chemistry and Biology.
-Keep the answer very short and easy to understand.
-
-Give ONLY:
-1. Definition — 1 to 3 simple sentences.
-2. One easy example.
-3. What type of question can come from it — briefly.
-
-Do not give long notes, study plans or unnecessary theory.
-Only educational content. Do not provide sexual, vulgar, offensive, abusive,
-or inappropriate content.
-""",
-                input=f"Explain the topic: {topic}",
-                max_output_tokens=250,
-            )
-
-            st.markdown("### Answer")
-            st.markdown(response.output_text.strip())
-
-        except Exception as e:
-            st.error(f"Could not get the AI answer: {e}")
-
 
 def main():
     st.markdown(
@@ -1271,7 +1140,7 @@ def main():
     if "nav_mode" not in st.session_state:
         st.session_state["nav_mode"] = "student"
 
-    b1, b2, b3, b4, b5, b6 = st.columns(6)
+    b1, b2, b3, b4, b5 = st.columns(5)
     with b1:
         if st.button("🔄 Refresh Data"):
             load_and_process_data.clear()
@@ -1288,18 +1157,11 @@ def main():
     with b5:
         if st.button("🔎 Search Student"):
             st.session_state["nav_mode"] = "search"
-    with b6:
-        if st.button("🤖 Ask Me"):
-            st.session_state["nav_mode"] = "ask"
 
     st.markdown("---")
 
     if st.session_state["nav_mode"] == "search":
         render_student_search_view(df)
-        return
-
-    if st.session_state["nav_mode"] == "ask":
-        render_ask_me_view()
         return
 
     batches = sorted(df["Classroom"].astype(str).unique())
