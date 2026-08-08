@@ -1005,6 +1005,125 @@ def render_top_performers_view(batch_data, is_neet):
         st.markdown("---")
 
 
+
+def render_student_search_view(df):
+    """Search students across all batches and show their complete results."""
+    st.markdown(
+        '<div class="section-header">🔎 Search Student Results</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Search by student name across all batches. If the same name appears in more than one batch, "
+        "the batch name is shown so the correct student can be selected."
+    )
+
+    search_text = st.text_input(
+        "Enter Student Name:",
+        placeholder="Type part or all of the student's name",
+        key="student_search_input",
+    )
+
+    if not search_text.strip():
+        st.info("Enter a student name to search across all batches.")
+        return
+
+    search_lower = search_text.strip().lower()
+
+    matches = df[
+        df["Student Name"].astype(str).str.lower().str.contains(
+            search_lower, na=False, regex=False
+        )
+    ][["Student Name", "Classroom"]].drop_duplicates()
+
+    if matches.empty:
+        st.warning(f"No student found matching '{search_text.strip()}'.")
+        return
+
+    matches = matches.sort_values(
+        by=["Student Name", "Classroom"]
+    ).reset_index(drop=True)
+
+    # Show name + batch together, especially useful when names are duplicated.
+    student_options = [
+        f"{row['Student Name']}  |  {row['Classroom']}"
+        for _, row in matches.iterrows()
+    ]
+
+    selected_option = st.selectbox(
+        "Select Student (Batch shown for identification):",
+        student_options,
+        key="searched_student_option",
+    )
+
+    selected_row = matches.iloc[student_options.index(selected_option)]
+    selected_student = selected_row["Student Name"]
+    selected_batch = selected_row["Classroom"]
+
+    st.markdown(
+        f"**Selected Student:** {selected_student}  \n"
+        f"**Batch:** {selected_batch}"
+    )
+
+    student_data = df[
+        (df["Student Name"] == selected_student)
+        & (df["Classroom"] == selected_batch)
+    ].drop_duplicates(
+        subset=["Test Name", "Category"], keep="last"
+    )
+
+    if student_data.empty:
+        st.warning("No test results found for the selected student.")
+        return
+
+    is_neet = "NEET" in str(selected_batch).upper()
+
+    if is_neet:
+        allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
+        categories = [
+            "Base Line Test",
+            "NEET RT",
+            "NEET CT",
+            "NEET Part Tests",
+            "NEET Practice Tests",
+            "NEET Tests",
+            "Unit Tests",
+            "Quarterly",
+            "Half Yearly",
+            "Pre Final 1",
+            "Pre Final 2",
+            "Pre Final 3",
+            "Part Tests",
+            "EAPCET",
+            "Other",
+        ]
+    else:
+        allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
+        categories = [
+            "Base Line Test",
+            "RT Mains",
+            "CT Mains",
+            "RT Advanced",
+            "CT Advanced",
+            "Part Tests",
+            "EAPCET RT",
+            "EAPCET CT",
+            "EAPCET",
+            "Unit Tests",
+            "Quarterly",
+            "Half Yearly",
+            "Pre Final 1",
+            "Pre Final 2",
+            "Pre Final 3",
+            "Other",
+        ]
+
+    for cat in categories:
+        render_category_section(student_data, cat, allowed_subjects)
+
+    # Keep the same extra Student Data analysis in search mode.
+    render_overall_competitive_subject_strength(student_data, is_neet)
+
+
 def main():
     st.markdown(
         '<div class="main-header">Student Performance Dashboard</div>',
@@ -1021,7 +1140,7 @@ def main():
     if "nav_mode" not in st.session_state:
         st.session_state["nav_mode"] = "student"
 
-    b1, b2, b3, b4 = st.columns(4)
+    b1, b2, b3, b4, b5 = st.columns(5)
     with b1:
         if st.button("🔄 Refresh Data"):
             load_and_process_data.clear()
@@ -1035,8 +1154,15 @@ def main():
     with b4:
         if st.button("🏆 Top Performers"):
             st.session_state["nav_mode"] = "topper"
+    with b5:
+        if st.button("🔎 Search Student"):
+            st.session_state["nav_mode"] = "search"
 
     st.markdown("---")
+
+    if st.session_state["nav_mode"] == "search":
+        render_student_search_view(df)
+        return
 
     batches = sorted(df["Classroom"].astype(str).unique())
     selected_batch = st.selectbox("Select Batch / Classroom:", batches)
