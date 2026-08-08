@@ -1122,107 +1122,134 @@ def render_student_search_view(df):
 
 
 
+
+
 def render_ask_me_view():
-    """Short educational AI helper: definition + simple example + question type."""
+    """Educational Ask Me page with native Google-style searchable topic suggestions."""
+    # This marker is used only to unlock typing in the Ask Me selectbox.
+    st.markdown(
+        """
+        <style>
+        /* Ask Me only: allow typing/searching in its topic dropdown.
+           Existing Student/Batch dropdowns remain locked as before. */
+        div[data-testid="stVerticalBlock"]:has(
+            div[data-testid="stMarkdownContainer"] .ask-me-marker
+        ) [data-baseweb="select"] input {
+            pointer-events: auto !important;
+            user-select: text !important;
+            caret-color: auto !important;
+        }
+        </style>
+        <span class="ask-me-marker"></span>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.markdown(
         '<div class="section-header">🤖 Ask Me – Learn a Topic</div>',
         unsafe_allow_html=True,
     )
     st.caption(
-        "Ask about a Maths, Physics or Chemistry topic. "
-        "The answer is kept short: definition, simple example, and question type."
+        "Start typing a Maths, Physics, Chemistry or Biology topic. "
+        "Suggestions appear inside the search box."
     )
 
-    # Simple ready-to-use suggestions shown when the Ask Me page opens.
-    st.markdown("**Try asking:**")
-    s1, s2, s3 = st.columns(3)
+    topics = [
+        # Maths
+        "Maths - Quadratic Equations", "Maths - Permutations and Combinations",
+        "Maths - Probability", "Maths - Straight Lines", "Maths - Circles",
+        "Maths - Limits", "Maths - Continuity and Differentiability",
+        "Maths - Differentiation", "Maths - Applications of Derivatives",
+        "Maths - Integration", "Maths - Matrices", "Maths - Determinants",
+        "Maths - Vectors", "Maths - Three Dimensional Geometry",
+        "Maths - Complex Numbers", "Maths - Sequence and Series",
+        "Maths - Binomial Theorem", "Maths - Trigonometry",
+        # Physics
+        "Physics - Kinematics", "Physics - Newton's Laws of Motion",
+        "Physics - Work Energy and Power", "Physics - Circular Motion",
+        "Physics - Centre of Mass", "Physics - Rotational Motion",
+        "Physics - Gravitation", "Physics - Simple Harmonic Motion",
+        "Physics - Waves", "Physics - Thermodynamics", "Physics - Kinetic Theory",
+        "Physics - Electrostatics", "Physics - Current Electricity",
+        "Physics - Magnetism", "Physics - Electromagnetic Induction",
+        "Physics - Alternating Current", "Physics - Ray Optics",
+        "Physics - Wave Optics", "Physics - Modern Physics", "Physics - Semiconductors",
+        # Chemistry
+        "Chemistry - Atomic Structure", "Chemistry - Periodic Table",
+        "Chemistry - Chemical Bonding", "Chemistry - States of Matter",
+        "Chemistry - Thermodynamics", "Chemistry - Equilibrium",
+        "Chemistry - Redox Reactions", "Chemistry - Solutions",
+        "Chemistry - Electrochemistry", "Chemistry - Chemical Kinetics",
+        "Chemistry - Coordination Compounds", "Chemistry - Organic Chemistry Basics",
+        "Chemistry - Hydrocarbons", "Chemistry - Alcohols Phenols and Ethers",
+        "Chemistry - Aldehydes Ketones and Carboxylic Acids", "Chemistry - Amines",
+        # Biology
+        "Biology - Cell Structure", "Biology - Biomolecules", "Biology - Cell Division",
+        "Biology - Photosynthesis", "Biology - Respiration", "Biology - Plant Growth",
+        "Biology - Human Digestion", "Biology - Human Respiration",
+        "Biology - Circulation", "Biology - Excretion", "Biology - Nervous System",
+        "Biology - Endocrine System", "Biology - Reproduction", "Biology - Genetics",
+        "Biology - Molecular Basis of Inheritance", "Biology - Evolution",
+        "Biology - Human Health and Disease", "Biology - Ecology",
+    ]
 
-    if "ask_me_question" not in st.session_state:
-        st.session_state["ask_me_question"] = ""
-
-    with s1:
-        if st.button("📖 What is a topic?", key="ask_suggestion_1"):
-            st.session_state["ask_me_question"] = "What is [topic]? Give the definition and one simple example."
-            st.rerun()
-
-    with s2:
-        if st.button("💡 Explain with example", key="ask_suggestion_2"):
-            st.session_state["ask_me_question"] = "Explain [topic] simply with one example."
-            st.rerun()
-
-    with s3:
-        if st.button("❓ What questions come?", key="ask_suggestion_3"):
-            st.session_state["ask_me_question"] = "For [topic], what type of questions are usually asked? Give one simple example."
-            st.rerun()
-
-    question = st.text_input(
-        "Ask your question:",
-        key="ask_me_question",
-        placeholder="Example: What is Newton's Second Law? Give definition and example.",
+    # Native Streamlit selectbox is searchable as the user types:
+    # it opens a dropdown and filters suggestions immediately, like a search box.
+    selected = st.selectbox(
+        "🔎 Search topic:",
+        topics,
+        index=None,
+        placeholder="Type: maths, physics, chemistry or biology topic...",
+        key="ask_me_topic_search",
     )
 
-    if not question.strip():
-        st.info("Type a topic or question above.")
+    if selected is None:
+        st.info("Start typing in the box above to see topic suggestions.")
         return
 
-    if question.strip().startswith(("What is [topic]", "Explain [topic]", "For [topic]")):
-        st.info("Replace [topic] with the topic you want to learn.")
-        return
+    topic = selected.split(" - ", 1)[-1]
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        try:
-            api_key = st.secrets.get("OPENAI_API_KEY", "")
-        except Exception:
-            api_key = ""
+    st.markdown(f"**Selected:** {selected}")
 
-    if not api_key:
-        st.warning(
-            "AI is not connected yet. Add OPENAI_API_KEY to Streamlit Secrets "
-            "to enable Ask Me."
-        )
-        return
+    if st.button("✨ Explain", type="primary", key="ask_me_submit"):
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            try:
+                api_key = st.secrets.get("OPENAI_API_KEY", "")
+            except Exception:
+                api_key = ""
 
-    if st.button("✨ Get Answer", type="primary", key="ask_me_submit"):
+        if not api_key:
+            st.warning(
+                "AI is not connected yet. Add OPENAI_API_KEY to Streamlit Secrets."
+            )
+            return
+
         try:
             from openai import OpenAI
-
             client = OpenAI(api_key=api_key)
-
-            system_prompt = """
-You are a friendly educational assistant for school/JEE/EAPCET students.
-
-Answer ONLY for educational learning in Maths, Physics, Chemistry and related
-academic topics.
-
-Keep every answer SHORT and easy to understand. Do not give long study plans
-or unnecessary details.
-
-For a topic explanation, use only:
-1. Definition — 1 to 3 simple sentences.
-2. Example — one clear example.
-3. Question type — briefly say what kind of question students may be asked,
-   with one very short example question when useful.
-
-Use simple student-friendly English. If the student asks a calculation,
-show only the necessary steps.
-
-Do not provide sexual, vulgar, offensive, abusive, or inappropriate content.
-If a request is unrelated to education, politely say that you can help only
-with educational topics.
-"""
 
             response = client.responses.create(
                 model="gpt-5-mini",
-                instructions=system_prompt,
-                input=question.strip(),
-                max_output_tokens=300,
+                instructions="""
+You are a friendly educational assistant for Maths, Physics, Chemistry and Biology.
+Keep the answer very short and easy to understand.
+
+Give ONLY:
+1. Definition — 1 to 3 simple sentences.
+2. One easy example.
+3. What type of question can come from it — briefly.
+
+Do not give long notes, study plans or unnecessary theory.
+Only educational content. Do not provide sexual, vulgar, offensive, abusive,
+or inappropriate content.
+""",
+                input=f"Explain the topic: {topic}",
+                max_output_tokens=250,
             )
 
-            answer = response.output_text.strip()
-
             st.markdown("### Answer")
-            st.markdown(answer)
+            st.markdown(response.output_text.strip())
 
         except Exception as e:
             st.error(f"Could not get the AI answer: {e}")
