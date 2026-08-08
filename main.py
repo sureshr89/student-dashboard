@@ -675,7 +675,7 @@ def render_overall_competitive_subject_strength(student_df, is_neet):
 
 
 def render_batch_competitive_subject_strength(batch_data, is_neet):
-    """Batch Analysis: combine each student's JEE + EAPCET marks using actual totals."""
+    """Batch Analysis: show separate JEE and EAPCET subject-average graphs."""
     if is_neet:
         competitive_categories = [
             "NEET RT", "NEET CT", "NEET Part Tests",
@@ -683,188 +683,127 @@ def render_batch_competitive_subject_strength(batch_data, is_neet):
         ]
         subjects = ["Physics", "Chemistry", "Biology"]
         subject_max = {"Physics": 180, "Chemistry": 180, "Biology": 360}
-        exam_label = "NEET"
+        exam_groups = [
+            ("NEET", batch_data[
+                batch_data["Category"].isin(competitive_categories)
+            ].copy())
+        ]
     else:
-        competitive_categories = [
-            "RT Mains", "CT Mains", "RT Advanced",
-            "CT Advanced", "Part Tests", "EAPCET RT",
-            "EAPCET CT", "EAPCET"
-        ]
         subjects = ["Physics", "Chemistry", "Maths"]
-        # Actual combined maximums:
-        # Maths = JEE 100 + EAPCET 80 = 180
-        # Physics = JEE 100 + EAPCET 40 = 140
-        # Chemistry = JEE 100 + EAPCET 40 = 140
-        subject_max = {"Physics": 140, "Chemistry": 140, "Maths": 180}
-        exam_label = "JEE + EAPCET"
-
-    comp_df = batch_data[
-        batch_data["Category"].isin(competitive_categories)
-    ].copy()
-
-    if comp_df.empty:
-        return
-
-    # For JEE + EAPCET, calculate the combined mark for EACH STUDENT first.
-    # Example:
-    # Maths = JEE 50 + EAPCET 20 = 70 / 180
-    # Physics = JEE 60 + EAPCET 25 = 85 / 140
-    if not is_neet:
-        student_col = "Student Name"
-        if student_col not in comp_df.columns:
-            st.warning("Student Name column is required for the combined JEE + EAPCET analysis.")
-            return
-
-        jee_categories = [
-            "RT Mains", "CT Mains", "RT Advanced",
-            "CT Advanced", "Part Tests"
+        exam_groups = [
+            (
+                "JEE",
+                batch_data[
+                    batch_data["Category"].isin([
+                        "RT Mains", "CT Mains", "RT Advanced",
+                        "CT Advanced", "Part Tests"
+                    ])
+                ].copy()
+            ),
+            (
+                "EAPCET",
+                batch_data[
+                    batch_data["Category"].isin([
+                        "EAPCET RT", "EAPCET CT", "EAPCET"
+                    ])
+                ].copy()
+            ),
         ]
-        eapcet_categories = ["EAPCET RT", "EAPCET CT", "EAPCET"]
-
-        jee_df = comp_df[
-            comp_df["Category"].isin(jee_categories)
-        ].copy()
-        eapcet_df = comp_df[
-            comp_df["Category"].isin(eapcet_categories)
-        ].copy()
-
-        # Use the best available/most recent row per student for each exam group.
-        # This prevents multiple test rows from adding together and inflating
-        # one student's combined score.
-        def student_subject_average(df, subject):
-            if df.empty or subject not in df.columns:
-                return pd.Series(dtype=float)
-
-            temp = df[[student_col, subject]].copy()
-            temp[subject] = pd.to_numeric(temp[subject], errors="coerce")
-            temp = temp.dropna(subset=[student_col, subject])
-
-            if temp.empty:
-                return pd.Series(dtype=float)
-
-            return temp.groupby(student_col)[subject].mean()
-
-        rows = []
-        for subject in subjects:
-            jee_marks = student_subject_average(jee_df, subject)
-            eapcet_marks = student_subject_average(eapcet_df, subject)
-
-            # Outer join: students who have only JEE or only EAPCET are retained.
-            combined = pd.concat(
-                [jee_marks.rename("JEE"), eapcet_marks.rename("EAPCET")],
-                axis=1
-            ).fillna(0)
-
-            if combined.empty:
-                continue
-
-            combined["Combined"] = combined["JEE"] + combined["EAPCET"]
-
-            rows.append({
-                "Subject": subject,
-                "Batch Average Marks": round(
-                    float(combined["Combined"].mean()), 2
-                ),
-                "Maximum Marks": subject_max[subject],
-                "Students Counted": int(len(combined)),
-            })
-
-        if not rows:
-            return
-
-        strength_df = pd.DataFrame(rows)
-
-        st.markdown(
-            '<div class="section-header">Overall Batch JEE + EAPCET Subject Analysis</div>',
-            unsafe_allow_html=True,
-        )
-        st.caption(
-            "Each student's JEE and EAPCET marks are added first, then the batch average is calculated. "
-            "Maths: JEE 100 + EAPCET 80 = 180. "
-            "Physics: JEE 100 + EAPCET 40 = 140. "
-            "Chemistry: JEE 100 + EAPCET 40 = 140."
-        )
-
-        fig_bar = px.bar(
-            strength_df,
-            x="Subject",
-            y="Batch Average Marks",
-            text="Batch Average Marks",
-            title="Batch Average Marks – JEE + EAPCET Combined",
-        )
-        fig_bar.update_traces(textposition="outside")
-
-        # Use each subject's actual maximum in the labels/table;
-        # the graph keeps one common axis so subjects remain comparable.
-        fig_bar.update_layout(
-            xaxis_title="Subject",
-            yaxis_title="Average Marks",
-            showlegend=False,
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        max_text = " | ".join(
-            f"{row['Subject']}: Max {row['Maximum Marks']}"
-            for _, row in strength_df.iterrows()
-        )
-        st.caption(max_text)
-
-        strongest = strength_df.loc[
-            strength_df["Batch Average Marks"].idxmax()
-        ]
-        weakest = strength_df.loc[
-            strength_df["Batch Average Marks"].idxmin()
-        ]
-
-        st.markdown(
-            f"**Students counted:** "
-            f"{int(strength_df['Students Counted'].max())}  \n"
-            f"**Strongest subject:** {strongest['Subject']} "
-            f"({strongest['Batch Average Marks']:.2f}/{strongest['Maximum Marks']})  \n"
-            f"**Needs more attention:** {weakest['Subject']} "
-            f"({weakest['Batch Average Marks']:.2f}/{weakest['Maximum Marks']})"
-        )
-        return
-
-    # NEET logic remains unchanged.
-    rows = []
-    for subject in subjects:
-        if subject not in comp_df.columns:
-            continue
-
-        vals = pd.to_numeric(comp_df[subject], errors="coerce").dropna()
-        if not vals.empty:
-            rows.append({
-                "Subject": subject,
-                "Batch Average Marks": round(float(vals.mean()), 2),
-                "Maximum Marks": subject_max[subject],
-                "Students Counted": int(vals.count()),
-            })
-
-    if not rows:
-        return
-
-    strength_df = pd.DataFrame(rows)
 
     st.markdown(
-        '<div class="section-header">Overall Batch NEET Competitive Exam Subject Analysis</div>',
+        '<div class="section-header">Overall Batch Competitive Exam Subject Analysis</div>',
         unsafe_allow_html=True,
     )
 
-    fig_bar = px.bar(
-        strength_df,
-        x="Subject",
-        y="Batch Average Marks",
-        text="Batch Average Marks",
-        title="Batch Average Marks by Subject",
-    )
-    fig_bar.update_traces(textposition="outside")
-    fig_bar.update_layout(
-        xaxis_title="Subject",
-        yaxis_title="Batch Average Marks",
-        showlegend=False,
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
+    graph_columns = st.columns(len(exam_groups))
+
+    for col, (exam_name, exam_df) in zip(graph_columns, exam_groups):
+        with col:
+            if exam_df.empty:
+                st.info(f"{exam_name} results are not available yet.")
+                continue
+
+            if exam_name == "JEE":
+                exam_max = {
+                    "Physics": 100,
+                    "Chemistry": 100,
+                    "Maths": 100,
+                }
+            elif exam_name == "EAPCET":
+                exam_max = {
+                    "Physics": 40,
+                    "Chemistry": 40,
+                    "Maths": 80,
+                }
+            else:
+                exam_max = subject_max
+
+            rows = []
+
+            for subject in subjects:
+                if subject not in exam_df.columns:
+                    continue
+
+                vals = pd.to_numeric(
+                    exam_df[subject], errors="coerce"
+                ).dropna()
+
+                if not vals.empty:
+                    rows.append({
+                        "Subject": subject,
+                        "Average Marks": round(float(vals.mean()), 2),
+                        "Maximum Marks": exam_max[subject],
+                    })
+
+            if not rows:
+                st.info(f"No {exam_name} subject marks available yet.")
+                continue
+
+            graph_df = pd.DataFrame(rows)
+
+            fig = px.bar(
+                graph_df,
+                x="Subject",
+                y="Average Marks",
+                text="Average Marks",
+                title=f"{exam_name} – Batch Average Marks",
+            )
+            fig.update_traces(textposition="outside")
+            fig.update_layout(
+                xaxis_title="Subject",
+                yaxis_title="Average Marks",
+                showlegend=False,
+            )
+
+            # Keep the actual maximum marks visible for each exam.
+            if exam_name == "JEE":
+                fig.update_yaxes(range=[0, 100])
+            elif exam_name == "EAPCET":
+                fig.update_yaxes(range=[0, 80])
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.caption(
+                " | ".join(
+                    f"{row['Subject']} Max {row['Maximum Marks']}"
+                    for _, row in graph_df.iterrows()
+                )
+            )
+
+            strongest = graph_df.loc[
+                graph_df["Average Marks"].idxmax()
+            ]
+            weakest = graph_df.loc[
+                graph_df["Average Marks"].idxmin()
+            ]
+
+            st.markdown(
+                f"**Records included:** {len(exam_df)}  \n"
+                f"**Strongest:** {strongest['Subject']} "
+                f"({strongest['Average Marks']:.2f}/{strongest['Maximum Marks']})  \n"
+                f"**Needs attention:** {weakest['Subject']} "
+                f"({weakest['Average Marks']:.2f}/{weakest['Maximum Marks']})"
+            )
 
 
 def render_batch_analysis_view(batch_data, is_neet):
