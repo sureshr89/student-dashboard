@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -1120,6 +1121,113 @@ def render_student_search_view(df):
     render_overall_competitive_subject_strength(student_data, is_neet)
 
 
+
+def render_ask_me_view():
+    """Short educational AI helper: definition + simple example + question type."""
+    st.markdown(
+        '<div class="section-header">🤖 Ask Me – Learn a Topic</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Ask about a Maths, Physics or Chemistry topic. "
+        "The answer is kept short: definition, simple example, and question type."
+    )
+
+    # Simple ready-to-use suggestions shown when the Ask Me page opens.
+    st.markdown("**Try asking:**")
+    s1, s2, s3 = st.columns(3)
+
+    if "ask_me_question" not in st.session_state:
+        st.session_state["ask_me_question"] = ""
+
+    with s1:
+        if st.button("📖 What is a topic?", key="ask_suggestion_1"):
+            st.session_state["ask_me_question"] = "What is [topic]? Give the definition and one simple example."
+            st.rerun()
+
+    with s2:
+        if st.button("💡 Explain with example", key="ask_suggestion_2"):
+            st.session_state["ask_me_question"] = "Explain [topic] simply with one example."
+            st.rerun()
+
+    with s3:
+        if st.button("❓ What questions come?", key="ask_suggestion_3"):
+            st.session_state["ask_me_question"] = "For [topic], what type of questions are usually asked? Give one simple example."
+            st.rerun()
+
+    question = st.text_input(
+        "Ask your question:",
+        key="ask_me_question",
+        placeholder="Example: What is Newton's Second Law? Give definition and example.",
+    )
+
+    if not question.strip():
+        st.info("Type a topic or question above.")
+        return
+
+    if question.strip().startswith(("What is [topic]", "Explain [topic]", "For [topic]")):
+        st.info("Replace [topic] with the topic you want to learn.")
+        return
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        try:
+            api_key = st.secrets.get("OPENAI_API_KEY", "")
+        except Exception:
+            api_key = ""
+
+    if not api_key:
+        st.warning(
+            "AI is not connected yet. Add OPENAI_API_KEY to Streamlit Secrets "
+            "to enable Ask Me."
+        )
+        return
+
+    if st.button("✨ Get Answer", type="primary", key="ask_me_submit"):
+        try:
+            from openai import OpenAI
+
+            client = OpenAI(api_key=api_key)
+
+            system_prompt = """
+You are a friendly educational assistant for school/JEE/EAPCET students.
+
+Answer ONLY for educational learning in Maths, Physics, Chemistry and related
+academic topics.
+
+Keep every answer SHORT and easy to understand. Do not give long study plans
+or unnecessary details.
+
+For a topic explanation, use only:
+1. Definition — 1 to 3 simple sentences.
+2. Example — one clear example.
+3. Question type — briefly say what kind of question students may be asked,
+   with one very short example question when useful.
+
+Use simple student-friendly English. If the student asks a calculation,
+show only the necessary steps.
+
+Do not provide sexual, vulgar, offensive, abusive, or inappropriate content.
+If a request is unrelated to education, politely say that you can help only
+with educational topics.
+"""
+
+            response = client.responses.create(
+                model="gpt-5-mini",
+                instructions=system_prompt,
+                input=question.strip(),
+                max_output_tokens=300,
+            )
+
+            answer = response.output_text.strip()
+
+            st.markdown("### Answer")
+            st.markdown(answer)
+
+        except Exception as e:
+            st.error(f"Could not get the AI answer: {e}")
+
+
 def main():
     st.markdown(
         '<div class="main-header">Student Performance Dashboard</div>',
@@ -1136,7 +1244,7 @@ def main():
     if "nav_mode" not in st.session_state:
         st.session_state["nav_mode"] = "student"
 
-    b1, b2, b3, b4, b5 = st.columns(5)
+    b1, b2, b3, b4, b5, b6 = st.columns(6)
     with b1:
         if st.button("🔄 Refresh Data"):
             load_and_process_data.clear()
@@ -1153,11 +1261,18 @@ def main():
     with b5:
         if st.button("🔎 Search Student"):
             st.session_state["nav_mode"] = "search"
+    with b6:
+        if st.button("🤖 Ask Me"):
+            st.session_state["nav_mode"] = "ask"
 
     st.markdown("---")
 
     if st.session_state["nav_mode"] == "search":
         render_student_search_view(df)
+        return
+
+    if st.session_state["nav_mode"] == "ask":
+        render_ask_me_view()
         return
 
     batches = sorted(df["Classroom"].astype(str).unique())
