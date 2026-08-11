@@ -666,6 +666,105 @@ def render_overall_competitive_subject_strength(student_df, is_neet):
         f"({weakest['Average Marks']:.2f} average marks)"
     )
 
+
+def render_average_category_graphs(data, is_neet, scope_label="Student"):
+    """Render requested end-of-page average graphs; existing trajectory graphs stay unchanged."""
+    if is_neet:
+        groups = [
+            ("NEET RT + NEET CT", ["NEET RT", "NEET CT"]),
+            ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
+        ]
+    else:
+        groups = [
+            ("RT Mains + CT Mains", ["RT Mains", "CT Mains"]),
+            ("RT Advanced + CT Advanced", ["RT Advanced", "CT Advanced"]),
+            ("EAPCET", ["EAPCET RT", "EAPCET CT", "EAPCET"]),
+            ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
+        ]
+
+    st.markdown(
+        '<div class="section-header">Average Performance by Test Group</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "BLT and Practice Tests (PT) are excluded from these calculations. "
+        "Only the test groups shown below are included. Absent scores are excluded."
+    )
+
+    for group_name, categories in groups:
+        group_df = data[data["Category"].isin(categories)].copy()
+        if group_df.empty or "Total" not in group_df.columns:
+            continue
+
+        group_df["Total"] = pd.to_numeric(group_df["Total"], errors="coerce")
+        group_df = group_df.dropna(subset=["Total"])
+        if group_df.empty:
+            continue
+
+        if scope_label == "Batch":
+            plot_df = (
+                group_df.groupby("Test Name", as_index=False)["Total"]
+                .mean()
+                .rename(columns={"Total": "Average Marks"})
+            )
+            overall_average = plot_df["Average Marks"].mean()
+        else:
+            plot_df = group_df[["Test Name", "Total"]].copy()
+            plot_df = plot_df.rename(columns={"Total": "Average Marks"})
+            overall_average = plot_df["Average Marks"].mean()
+
+        plot_df = plot_df.sort_values("Test Name")
+        tests_counted = int(plot_df["Test Name"].nunique())
+        if tests_counted == 0:
+            continue
+
+        st.markdown(f"### {group_name}")
+        test_names = plot_df["Test Name"].dropna().astype(str).unique().tolist()
+        test_list = ", ".join(test_names) if test_names else "None"
+
+        st.markdown(
+            f"**Average: {overall_average:.2f} marks**  |  "
+            f"**Tests considered: {tests_counted}**"
+        )
+        st.caption(f"Tests used: {test_list} | BLT and Practice Tests (PT) excluded | Absent scores excluded")
+
+        fig = px.bar(
+            plot_df,
+            x="Test Name",
+            y="Average Marks",
+            text="Average Marks",
+            title=f"{scope_label} – {group_name}",
+        )
+        fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+        fig.add_hline(
+            y=overall_average,
+            line_dash="dash",
+            annotation_text=f"Overall Avg: {overall_average:.2f}",
+            annotation_position="top left",
+        )
+        fig.update_layout(
+            xaxis_title="Test",
+            yaxis_title="Average Total Marks" if scope_label == "Batch" else "Total Marks",
+            height=320,
+            margin=dict(l=20, r=20, t=55, b=80),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#1f2937"),
+        )
+        fig.update_xaxes(tickangle=-35)
+        fig.update_traces(hovertemplate="%{x}<br>Marks: %{y:.2f}<extra></extra>")
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={
+                "displayModeBar": False,
+                "staticPlot": True,
+                "scrollZoom": False,
+                "doubleClick": False,
+            },
+            theme="streamlit",
+        )
+
 def render_category_section(student_df, category_name, allowed_subjects):
     cat_df = student_df[student_df["Category"] == category_name].copy()
 
@@ -946,166 +1045,10 @@ def render_batch_analysis_view(batch_data, is_neet):
         st.markdown("---")
 
 
-    # Requested grouped average graphs at the very end.
-    render_end_of_page_average_graphs(batch_data, is_neet, is_batch=True)
+    # EXTRA ONLY: overall batch competitive subject analysis at the end.
+    render_batch_competitive_subject_strength(batch_data, is_neet)
+    render_average_category_graphs(batch_data, is_neet, scope_label="Batch")
 
-
-
-def _format_test_list(test_names, max_items=12):
-    """Return a compact human-readable list of tests used in an average."""
-    names = [str(x) for x in test_names if pd.notna(x)]
-    if len(names) <= max_items:
-        return ", ".join(names)
-    return ", ".join(names[:max_items]) + f" + {len(names) - max_items} more"
-
-
-def _render_average_group_graph(data, title, categories, is_batch, subject_cols):
-    """
-    Render one end-of-page average graph.
-
-    For batch data:
-      - each Test Name is one test
-      - the plotted value is the batch average Total for that test
-      - overall average is the mean of the valid test averages
-      - absent students are excluded automatically because Total is NaN
-
-    For student data:
-      - each Test Name is one test
-      - the plotted value is the student's Total
-      - overall average is the mean of valid test scores
-      - absent tests are excluded automatically because Total is NaN
-    """
-    group_df = data[data["Category"].isin(categories)].copy()
-    if group_df.empty or "Total" not in group_df.columns:
-        return
-
-    group_df["Total"] = pd.to_numeric(group_df["Total"], errors="coerce")
-    group_df = group_df.dropna(subset=["Total", "Test Name"]).copy()
-
-    if group_df.empty:
-        return
-
-    # One actual test = one unique Test Name. For batch analysis, first
-    # calculate the average score of students who attended each test.
-    if is_batch:
-        plot_df = (
-            group_df.groupby("Test Name", as_index=False)["Total"]
-            .mean()
-            .rename(columns={"Total": "Average Marks"})
-        )
-    else:
-        # Student data is already one row per test/category.
-        plot_df = group_df[["Test Name", "Total"]].copy()
-        plot_df = plot_df.rename(columns={"Total": "Average Marks"})
-        plot_df = plot_df.groupby("Test Name", as_index=False)["Average Marks"].mean()
-
-    plot_df = plot_df.sort_values("Test Name").reset_index(drop=True)
-
-    if plot_df.empty:
-        return
-
-    overall_average = plot_df["Average Marks"].mean()
-    tests_counted = len(plot_df)
-    test_names = plot_df["Test Name"].tolist()
-
-    st.markdown(
-        f'<div class="section-header">{title}</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"**Average Marks:** {overall_average:.2f}  |  "
-        f"**Tests Considered:** {tests_counted}"
-    )
-
-    st.caption(
-        f"Tests used: {_format_test_list(test_names)}  "
-        f"| BLT and Practice Tests are excluded. Absent scores are not counted."
-    )
-
-    fig = px.bar(
-    plot_df,
-    x="Test Name",
-    y="Average Marks",
-    text="Average Marks",
-)
-    fig.update_traces(textposition="top center")
-    fig.add_hline(
-        y=overall_average,
-        line_dash="dash",
-        annotation_text=f"Overall Avg: {overall_average:.2f}",
-        annotation_position="top left",
-    )
-    fig.update_layout(
-        xaxis_title="Test",
-        yaxis_title="Average Total Marks",
-        height=320,
-        margin=dict(l=10, r=10, t=45, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#1f2937"),
-        showlegend=False,
-    )
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={
-            "displayModeBar": False,
-            "scrollZoom": False,
-            "doubleClick": False,
-        },
-        theme="streamlit",
-    )
-
-
-def render_end_of_page_average_graphs(data, is_neet, is_batch=False):
-    """
-    Add the requested category-combination average graphs at the end of
-    Student Data and Batch Analysis.
-
-    BLT and Practice Tests are deliberately not included in any group.
-    """
-    if is_neet:
-        groups = [
-            ("NEET RT + NEET CT", ["NEET RT", "NEET CT"]),
-            (
-                "School Exams",
-                ["Unit Tests", "Quarterly", "Half Yearly",
-                 "Pre Final 1", "Pre Final 2", "Pre Final 3"],
-            ),
-        ]
-        subjects = ["Physics", "Chemistry", "Biology"]
-    else:
-        groups = [
-            ("RT Mains + CT Mains", ["RT Mains", "CT Mains"]),
-            ("RT Advanced + CT Advanced", ["RT Advanced", "CT Advanced"]),
-            ("EAPCET", ["EAPCET RT", "EAPCET CT", "EAPCET"]),
-            (
-                "School Exams",
-                ["Unit Tests", "Quarterly", "Half Yearly",
-                 "Pre Final 1", "Pre Final 2", "Pre Final 3"],
-            ),
-        ]
-        subjects = ["Physics", "Chemistry", "Maths"]
-
-    st.markdown(
-        '<div class="section-header">Average Performance Analysis</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "These final graphs use only the test groups shown below. "
-        "Base Line Test (BLT) and Practice Tests (PT) are excluded. "
-        "Absent scores are excluded from average calculations."
-    )
-
-    for title, categories in groups:
-        _render_average_group_graph(
-            data,
-            title,
-            categories,
-            is_batch=is_batch,
-            subject_cols=subjects,
-        )
 
 def render_top_performers_view(batch_data, is_neet):
     st.markdown(
@@ -1275,8 +1218,9 @@ def render_student_search_view(df):
     for cat in categories:
         render_category_section(student_data, cat, allowed_subjects)
 
-    # Requested grouped average graphs at the very end of Search Student.
-    render_end_of_page_average_graphs(student_data, is_neet, is_batch=False)
+    # Keep the same extra Student Data analysis in search mode.
+    render_overall_competitive_subject_strength(student_data, is_neet)
+    render_average_category_graphs(student_data, is_neet, scope_label="Student")
 
 
 
@@ -1394,8 +1338,9 @@ def main():
         for cat in categories:
             render_category_section(student_data, cat, allowed_subjects)
 
-        # Requested grouped average graphs at the very end of Student Data.
-        render_end_of_page_average_graphs(student_data, is_neet, is_batch=False)
+        # EXTRA ONLY: appended at the end of Student Data.
+        render_overall_competitive_subject_strength(student_data, is_neet)
+        render_average_category_graphs(student_data, is_neet, scope_label="Student")
 
 
 if __name__ == "__main__":
