@@ -1023,13 +1023,12 @@ def _render_average_group_graph(data, title, categories, is_batch, subject_cols)
         f"| BLT and Practice Tests are excluded. Absent scores are not counted."
     )
 
-    fig = px.line(
-        plot_df,
-        x="Test Name",
-        y="Average Marks",
-        markers=True,
-        text="Average Marks",
-    )
+    fig = px.bar(
+    plot_df,
+    x="Test Name",
+    y="Average Marks",
+    text="Average Marks",
+)
     fig.update_traces(textposition="top center")
     fig.add_hline(
         y=overall_average,
