@@ -587,7 +587,8 @@ def render_overall_competitive_subject_strength(student_df, is_neet):
     else:
         competitive_categories = [
             "RT Mains", "CT Mains", "RT Advanced",
-            "CT Advanced", "Part Tests"
+            "CT Advanced", "Part Tests",
+            "EAPCET RT", "EAPCET CT", "EAPCET"
         ]
         subjects = ["Physics", "Chemistry", "Maths"]
         exam_label = "JEE"
@@ -790,7 +791,8 @@ def render_batch_competitive_subject_strength(batch_data, is_neet):
     else:
         competitive_categories = [
             "RT Mains", "CT Mains", "RT Advanced",
-            "CT Advanced", "Part Tests"
+            "CT Advanced", "Part Tests",
+            "EAPCET RT", "EAPCET CT", "EAPCET"
         ]
         subjects = ["Physics", "Chemistry", "Maths"]
         exam_label = "JEE"
