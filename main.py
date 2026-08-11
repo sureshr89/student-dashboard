@@ -575,196 +575,195 @@ def highlight_average_row(row):
 
 
 
-def render_overall_competitive_subject_strength(student_df, is_neet):
-    """Extra analysis appended to Student Data; existing dashboard remains unchanged."""
-    if is_neet:
-        competitive_categories = [
-            "NEET RT", "NEET CT", "NEET Part Tests",
-            "NEET Practice Tests", "NEET Tests"
-        ]
-        subjects = ["Physics", "Chemistry", "Biology"]
-        exam_label = "NEET"
-    else:
-        competitive_categories = [
-            "RT Mains", "CT Mains", "RT Advanced",
-            "CT Advanced", "Part Tests",
-            "EAPCET RT", "EAPCET CT", "EAPCET"
-        ]
-        subjects = ["Physics", "Chemistry", "Maths"]
-        exam_label = "JEE"
+def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
+    """
+    Render the requested grouped subject-average analysis at the end of the page.
 
-    comp_df = student_df[student_df["Category"].isin(competitive_categories)].copy()
-    if comp_df.empty:
-        return
+    Improvement Trajectory graphs are intentionally untouched elsewhere.
 
-    rows = []
-    for subject in subjects:
-        if subject not in comp_df.columns:
-            continue
-        vals = pd.to_numeric(comp_df[subject], errors="coerce").dropna()
-        if not vals.empty:
-            rows.append({
-                "Subject": subject,
-                "Average Marks": round(vals.mean(), 2),
-                "Tests Counted": int(vals.count())
-            })
+    JEE groups:
+      - RT Mains + CT Mains
+      - RT Advanced + CT Advanced
+      - EAPCET
+      - School Exams
 
-    if not rows:
-        return
+    NEET groups:
+      - NEET RT + NEET CT
+      - School Exams
 
-    strength_df = pd.DataFrame(rows)
-
-    st.markdown(
-        f'<div class="section-header">Overall {exam_label} Competitive Exam Subject Analysis</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        f"Uses only completed {exam_label} competitive exams. "
-        "School exams such as Unit Tests, Quarterly, Half Yearly and Pre Finals are excluded."
-    )
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        fig_bar = px.bar(
-            strength_df,
-            x="Subject",
-            y="Average Marks",
-            text="Average Marks",
-            title=f"{exam_label} – Average Marks by Subject",
-        )
-        fig_bar.update_traces(textposition="outside")
-        fig_bar.update_layout(
-            xaxis_title="Subject",
-            yaxis_title="Average Marks",
-            showlegend=False,
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-    with c2:
-        pie_df = strength_df[strength_df["Average Marks"] > 0]
-        if not pie_df.empty:
-            fig_pie = px.pie(
-                pie_df,
-                names="Subject",
-                values="Average Marks",
-                title=f"{exam_label} – Current Subject Strength Distribution",
-                hole=0.25,
-            )
-            fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-    strongest = strength_df.loc[strength_df["Average Marks"].idxmax()]
-    weakest = strength_df.loc[strength_df["Average Marks"].idxmin()]
-    total_tests = len(comp_df)
-
-    st.markdown(
-        f"**Competitive tests included:** {total_tests}  \n"
-        f"**Strongest subject:** {strongest['Subject']} "
-        f"({strongest['Average Marks']:.2f} average marks)  \n"
-        f"**Needs more attention:** {weakest['Subject']} "
-        f"({weakest['Average Marks']:.2f} average marks)"
-    )
-
-
-def render_average_category_graphs(data, is_neet, scope_label="Student"):
-    """Render requested end-of-page average graphs; existing trajectory graphs stay unchanged."""
+    BLT and Practice Tests are not included.
+    Absent/non-numeric marks are excluded from calculations.
+    """
     if is_neet:
         groups = [
             ("NEET RT + NEET CT", ["NEET RT", "NEET CT"]),
-            ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
+            (
+                "School Exams",
+                [
+                    "Unit Tests", "Quarterly", "Half Yearly",
+                    "Pre Final 1", "Pre Final 2", "Pre Final 3",
+                ],
+            ),
         ]
+        subjects = ["Physics", "Chemistry", "Biology"]
     else:
         groups = [
             ("RT Mains + CT Mains", ["RT Mains", "CT Mains"]),
             ("RT Advanced + CT Advanced", ["RT Advanced", "CT Advanced"]),
             ("EAPCET", ["EAPCET RT", "EAPCET CT", "EAPCET"]),
-            ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
+            (
+                "School Exams",
+                [
+                    "Unit Tests", "Quarterly", "Half Yearly",
+                    "Pre Final 1", "Pre Final 2", "Pre Final 3",
+                ],
+            ),
         ]
+        subjects = ["Physics", "Chemistry", "Maths"]
 
     st.markdown(
-        '<div class="section-header">Average Performance by Test Group</div>',
+        '<div class="section-header">Average Performance Analysis</div>',
         unsafe_allow_html=True,
     )
     st.caption(
-        "BLT and Practice Tests (PT) are excluded from these calculations. "
-        "Only the test groups shown below are included. Absent scores are excluded."
+        "These graphs show subject averages for the requested test combinations. "
+        "BLT and Practice Tests (PT) are excluded. Absent scores are excluded."
     )
 
     for group_name, categories in groups:
         group_df = data[data["Category"].isin(categories)].copy()
-        if group_df.empty or "Total" not in group_df.columns:
-            continue
-
-        group_df["Total"] = pd.to_numeric(group_df["Total"], errors="coerce")
-        group_df = group_df.dropna(subset=["Total"])
         if group_df.empty:
             continue
 
-        if scope_label == "Batch":
-            plot_df = (
-                group_df.groupby("Test Name", as_index=False)["Total"]
-                .mean()
-                .rename(columns={"Total": "Average Marks"})
-            )
-            overall_average = plot_df["Average Marks"].mean()
-        else:
-            plot_df = group_df[["Test Name", "Total"]].copy()
-            plot_df = plot_df.rename(columns={"Total": "Average Marks"})
-            overall_average = plot_df["Average Marks"].mean()
-
-        plot_df = plot_df.sort_values("Test Name")
-        tests_counted = int(plot_df["Test Name"].nunique())
-        if tests_counted == 0:
+        if "Test Name" not in group_df.columns:
             continue
 
-        st.markdown(f"### {group_name}")
-        test_names = plot_df["Test Name"].dropna().astype(str).unique().tolist()
-        test_list = ", ".join(test_names) if test_names else "None"
+        # Keep only actual tests with at least one valid Total score.
+        group_df["Total"] = pd.to_numeric(group_df["Total"], errors="coerce")
+        valid_test_names = (
+            group_df.dropna(subset=["Total", "Test Name"])["Test Name"]
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        if not valid_test_names:
+            continue
+
+        group_df = group_df[group_df["Test Name"].astype(str).isin(valid_test_names)].copy()
+
+        # Subject average across all valid scores in the selected combination.
+        rows = []
+        for subject in subjects:
+            if subject not in group_df.columns:
+                continue
+
+            values = pd.to_numeric(group_df[subject], errors="coerce").dropna()
+            if not values.empty:
+                rows.append(
+                    {
+                        "Subject": subject,
+                        "Average Marks": values.mean(),
+                    }
+                )
+
+        if not rows:
+            continue
+
+        subject_df = pd.DataFrame(rows)
+        overall_subject_average = subject_df["Average Marks"].mean()
+        tests_counted = len(valid_test_names)
 
         st.markdown(
-            f"**Average: {overall_average:.2f} marks**  |  "
-            f"**Tests considered: {tests_counted}**"
-        )
-        st.caption(f"Tests used: {test_list} | BLT and Practice Tests (PT) excluded | Absent scores excluded")
-
-        fig = px.bar(
-            plot_df,
-            x="Test Name",
-            y="Average Marks",
-            text="Average Marks",
-            title=f"{scope_label} – {group_name}",
-        )
-        fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
-        fig.add_hline(
-            y=overall_average,
-            line_dash="dash",
-            annotation_text=f"Overall Avg: {overall_average:.2f}",
-            annotation_position="top left",
-        )
-        fig.update_layout(
-            xaxis_title="Test",
-            yaxis_title="Average Total Marks" if scope_label == "Batch" else "Total Marks",
-            height=320,
-            margin=dict(l=20, r=20, t=55, b=80),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#1f2937"),
-        )
-        fig.update_xaxes(tickangle=-35)
-        fig.update_traces(hovertemplate="%{x}<br>Marks: %{y:.2f}<extra></extra>")
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-            config={
-                "displayModeBar": False,
-                "staticPlot": True,
-                "scrollZoom": False,
-                "doubleClick": False,
-            },
-            theme="streamlit",
+            f'<div class="section-header">{group_name}</div>',
+            unsafe_allow_html=True,
         )
 
+        st.markdown(
+            f"**Average of Subject Averages: {overall_subject_average:.2f} marks**  |  "
+            f"**Tests Considered: {tests_counted}**"
+        )
+
+        test_list = ", ".join(valid_test_names)
+        st.caption(
+            f"Tests used: {test_list} | "
+            f"BLT and Practice Tests (PT) excluded | Absent scores excluded"
+        )
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            fig_bar = px.bar(
+                subject_df,
+                x="Subject",
+                y="Average Marks",
+                text="Average Marks",
+                title=f"{scope_label} – {group_name} – Average Marks by Subject",
+            )
+            fig_bar.update_traces(
+                texttemplate="%{text:.2f}",
+                textposition="outside",
+            )
+            fig_bar.add_hline(
+                y=overall_subject_average,
+                line_dash="dash",
+                annotation_text=f"Overall Avg: {overall_subject_average:.2f}",
+                annotation_position="top left",
+            )
+            fig_bar.update_layout(
+                xaxis_title="Subject",
+                yaxis_title="Average Marks",
+                height=360,
+                margin=dict(l=20, r=20, t=60, b=20),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#1f2937"),
+                showlegend=False,
+            )
+            st.plotly_chart(
+                fig_bar,
+                use_container_width=True,
+                config={
+                    "displayModeBar": False,
+                    "staticPlot": True,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                },
+                theme="streamlit",
+            )
+
+        with c2:
+            pie_df = subject_df[subject_df["Average Marks"] > 0].copy()
+            if not pie_df.empty:
+                fig_pie = px.pie(
+                    pie_df,
+                    names="Subject",
+                    values="Average Marks",
+                    title=f"{scope_label} – {group_name} – Subject Strength",
+                    hole=0.25,
+                )
+                fig_pie.update_traces(
+                    textposition="inside",
+                    textinfo="percent+label",
+                )
+                fig_pie.update_layout(
+                    height=360,
+                    margin=dict(l=20, r=20, t=60, b=20),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(color="#1f2937"),
+                )
+                st.plotly_chart(
+                    fig_pie,
+                    use_container_width=True,
+                    config={
+                        "displayModeBar": False,
+                        "staticPlot": True,
+                        "scrollZoom": False,
+                        "doubleClick": False,
+                    },
+                    theme="streamlit",
+                )
+        st.markdown("---")
 def render_category_section(student_df, category_name, allowed_subjects):
     cat_df = student_df[student_df["Category"] == category_name].copy()
 
@@ -878,96 +877,6 @@ def render_category_section(student_df, category_name, allowed_subjects):
 
 
 
-def render_batch_competitive_subject_strength(batch_data, is_neet):
-    """Extra analysis appended to Batch Analysis; existing dashboard remains unchanged."""
-    if is_neet:
-        competitive_categories = [
-            "NEET RT", "NEET CT", "NEET Part Tests",
-            "NEET Practice Tests", "NEET Tests"
-        ]
-        subjects = ["Physics", "Chemistry", "Biology"]
-        exam_label = "NEET"
-    else:
-        competitive_categories = [
-            "RT Mains", "CT Mains", "RT Advanced",
-            "CT Advanced", "Part Tests",
-            "EAPCET RT", "EAPCET CT", "EAPCET"
-        ]
-        subjects = ["Physics", "Chemistry", "Maths"]
-        exam_label = "JEE"
-
-    comp_df = batch_data[batch_data["Category"].isin(competitive_categories)].copy()
-    if comp_df.empty:
-        return
-
-    rows = []
-    for subject in subjects:
-        if subject not in comp_df.columns:
-            continue
-        vals = pd.to_numeric(comp_df[subject], errors="coerce").dropna()
-        if not vals.empty:
-            rows.append({
-                "Subject": subject,
-                "Batch Average Marks": round(vals.mean(), 2),
-                "Scores Counted": int(vals.count())
-            })
-
-    if not rows:
-        return
-
-    strength_df = pd.DataFrame(rows)
-
-    st.markdown(
-        f'<div class="section-header">Overall Batch {exam_label} Competitive Exam Subject Analysis</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        f"Uses only completed {exam_label} competitive exams for the selected batch. "
-        "Unit Tests, Quarterly, Half Yearly, Pre Finals and other school exams are excluded."
-    )
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        fig_bar = px.bar(
-            strength_df,
-            x="Subject",
-            y="Batch Average Marks",
-            text="Batch Average Marks",
-            title=f"{exam_label} – Overall Batch Average Marks by Subject",
-        )
-        fig_bar.update_traces(textposition="outside")
-        fig_bar.update_layout(
-            xaxis_title="Subject",
-            yaxis_title="Batch Average Marks",
-            showlegend=False,
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-    with c2:
-        pie_df = strength_df[strength_df["Batch Average Marks"] > 0]
-        if not pie_df.empty:
-            fig_pie = px.pie(
-                pie_df,
-                names="Subject",
-                values="Batch Average Marks",
-                title=f"{exam_label} – Batch Subject Strength Distribution",
-                hole=0.25,
-            )
-            fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-    strongest = strength_df.loc[strength_df["Batch Average Marks"].idxmax()]
-    weakest = strength_df.loc[strength_df["Batch Average Marks"].idxmin()]
-
-    st.markdown(
-        f"**Competitive exam records included:** {len(comp_df)}  \n"
-        f"**Strongest batch subject:** {strongest['Subject']} "
-        f"({strongest['Batch Average Marks']:.2f} average marks)  \n"
-        f"**Needs more attention:** {weakest['Subject']} "
-        f"({weakest['Batch Average Marks']:.2f} average marks)"
-    )
-
 def render_batch_analysis_view(batch_data, is_neet):
     st.markdown(
         '<div class="section-header">Executive Batch Dashboard - Class Averages</div>',
@@ -1046,8 +955,7 @@ def render_batch_analysis_view(batch_data, is_neet):
 
 
     # EXTRA ONLY: overall batch competitive subject analysis at the end.
-    render_batch_competitive_subject_strength(batch_data, is_neet)
-    render_average_category_graphs(batch_data, is_neet, scope_label="Batch")
+    render_combination_subject_analysis(batch_data, is_neet, scope_label="Batch")
 
 
 def render_top_performers_view(batch_data, is_neet):
@@ -1219,8 +1127,7 @@ def render_student_search_view(df):
         render_category_section(student_data, cat, allowed_subjects)
 
     # Keep the same extra Student Data analysis in search mode.
-    render_overall_competitive_subject_strength(student_data, is_neet)
-    render_average_category_graphs(student_data, is_neet, scope_label="Student")
+    render_combination_subject_analysis(student_data, is_neet, scope_label="Student")
 
 
 
@@ -1339,8 +1246,7 @@ def main():
             render_category_section(student_data, cat, allowed_subjects)
 
         # EXTRA ONLY: appended at the end of Student Data.
-        render_overall_competitive_subject_strength(student_data, is_neet)
-        render_average_category_graphs(student_data, is_neet, scope_label="Student")
+            render_combination_subject_analysis(student_data, is_neet, scope_label="Student")
 
 
 if __name__ == "__main__":
