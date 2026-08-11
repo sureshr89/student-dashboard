@@ -712,12 +712,14 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
             fig_bar.update_traces(
                 texttemplate="%{text:.2f}",
                 textposition="outside",
+                textfont=dict(color="#1f2937"),
             )
             fig_bar.add_hline(
                 y=overall_subject_average,
                 line_dash="dash",
                 annotation_text=f"Overall Avg: {overall_subject_average:.2f}",
                 annotation_position="top left",
+                annotation_font=dict(color="#1f2937"),
             )
             fig_bar.update_layout(
                 xaxis_title="Subject",
@@ -725,9 +727,22 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                 height=360,
                 margin=dict(l=20, r=20, t=60, b=20),
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(255,255,255,0.20)",
                 font=dict(color="#1f2937"),
+                title_font=dict(color="#1f2937", size=16),
                 showlegend=False,
+                xaxis=dict(
+                    title_font=dict(color="#1f2937"),
+                    tickfont=dict(color="#1f2937"),
+                    gridcolor="rgba(80,80,80,0.15)",
+                    zerolinecolor="rgba(80,80,80,0.20)",
+                ),
+                yaxis=dict(
+                    title_font=dict(color="#1f2937"),
+                    tickfont=dict(color="#1f2937"),
+                    gridcolor="rgba(80,80,80,0.15)",
+                    zerolinecolor="rgba(80,80,80,0.20)",
+                ),
             )
             st.plotly_chart(
                 fig_bar,
@@ -738,7 +753,7 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                     "scrollZoom": False,
                     "doubleClick": False,
                 },
-                theme="streamlit",
+                theme="plotly",
             )
 
         with c2:
@@ -756,13 +771,16 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                 fig_pie.update_traces(
                     textposition="inside",
                     textinfo="percent+label",
+                    textfont=dict(color="#1f2937"),
                 )
                 fig_pie.update_layout(
                     height=360,
                     margin=dict(l=20, r=20, t=60, b=20),
                     paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(255,255,255,0.20)",
                     font=dict(color="#1f2937"),
+                    title_font=dict(color="#1f2937", size=16),
+                    legend=dict(font=dict(color="#1f2937")),
                 )
                 st.plotly_chart(
                     fig_pie,
@@ -773,7 +791,7 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                         "scrollZoom": False,
                         "doubleClick": False,
                     },
-                    theme="streamlit",
+                    theme="plotly",
                 )
         st.markdown("---")
 def render_category_section(student_df, category_name, allowed_subjects):
