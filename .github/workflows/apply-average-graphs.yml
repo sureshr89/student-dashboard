@@ -1,0 +1,153 @@
+name: Apply average graphs
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch dashboard
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("main.py")
+          text = p.read_text(encoding="utf-8")
+
+          if "def render_average_category_graphs(" not in text:
+              marker = "\\ndef render_category_section(student_df, category_name, allowed_subjects):\\n"
+              helper = '''
+
+          def render_average_category_graphs(data, is_neet, scope_label="Student"):
+              """Render requested end-of-page average graphs; existing trajectory graphs stay unchanged."""
+              if is_neet:
+                  groups = [
+                      ("NEET RT + NEET CT", ["NEET RT", "NEET CT"]),
+                      ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
+                  ]
+              else:
+                  groups = [
+                      ("RT Mains + CT Mains", ["RT Mains", "CT Mains"]),
+                      ("RT Advanced + CT Advanced", ["RT Advanced", "CT Advanced"]),
+                      ("EAPCET", ["EAPCET RT", "EAPCET CT", "EAPCET"]),
+                      ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
+                  ]
+
+              st.markdown(
+                  '<div class="section-header">Average Performance by Test Group</div>',
+                  unsafe_allow_html=True,
+              )
+              st.caption(
+                  "BLT and Practice Tests (PT) are excluded from these calculations. "
+                  "Only the test groups shown below are included. Absent scores are excluded."
+              )
+
+              for group_name, categories in groups:
+                  group_df = data[data["Category"].isin(categories)].copy()
+                  if group_df.empty or "Total" not in group_df.columns:
+                      continue
+
+                  group_df["Total"] = pd.to_numeric(group_df["Total"], errors="coerce")
+                  group_df = group_df.dropna(subset=["Total"])
+                  if group_df.empty:
+                      continue
+
+                  if scope_label == "Batch":
+                      plot_df = (
+                          group_df.groupby("Test Name", as_index=False)["Total"]
+                          .mean()
+                          .rename(columns={"Total": "Average Marks"})
+                      )
+                      overall_average = plot_df["Average Marks"].mean()
+                  else:
+                      plot_df = group_df[["Test Name", "Total"]].copy()
+                      plot_df = plot_df.rename(columns={"Total": "Average Marks"})
+                      overall_average = plot_df["Average Marks"].mean()
+
+                  plot_df = plot_df.sort_values("Test Name")
+                  tests_counted = int(plot_df["Test Name"].nunique())
+                  if tests_counted == 0:
+                      continue
+
+                  st.markdown(f"### {group_name}")
+                  st.markdown(
+                      f"**Average: {overall_average:.2f} marks**  |  "
+                      f"**Tests considered: {tests_counted}**"
+                  )
+
+                  fig = px.line(
+                      plot_df,
+                      x="Test Name",
+                      y="Average Marks",
+                      markers=True,
+                      title=f"{scope_label} – {group_name}",
+                  )
+                  fig.update_layout(
+                      xaxis_title="Test",
+                      yaxis_title="Average Total Marks" if scope_label == "Batch" else "Total Marks",
+                      height=320,
+                      margin=dict(l=20, r=20, t=55, b=80),
+                      paper_bgcolor="rgba(0,0,0,0)",
+                      plot_bgcolor="rgba(0,0,0,0)",
+                      font=dict(color="#1f2937"),
+                  )
+                  fig.update_xaxes(tickangle=-35)
+                  fig.update_traces(hovertemplate="%{x}<br>Marks: %{y:.2f}<extra></extra>")
+                  st.plotly_chart(
+                      fig,
+                      use_container_width=True,
+                      config={
+                          "displayModeBar": False,
+                          "staticPlot": True,
+                          "scrollZoom": False,
+                          "doubleClick": False,
+                      },
+                      theme="streamlit",
+                  )
+          '''
+              if marker not in text:
+                  raise SystemExit("Average-graph insertion anchor not found")
+              text = text.replace(marker, helper + marker, 1)
+
+          anchor = '''    # EXTRA ONLY: overall batch competitive subject analysis at the end.\n    render_batch_competitive_subject_strength(batch_data, is_neet)\n'''
+          replacement = '''    # EXTRA ONLY: overall batch competitive subject analysis at the end.\n    render_batch_competitive_subject_strength(batch_data, is_neet)\n    render_average_category_graphs(batch_data, is_neet, scope_label="Batch")\n'''
+          if anchor not in text:
+              raise SystemExit("Batch insertion anchor not found")
+          text = text.replace(anchor, replacement, 1)
+
+          anchor = '''        # EXTRA ONLY: appended at the end of Student Data.\n        render_overall_competitive_subject_strength(student_data, is_neet)\n'''
+          replacement = '''        # EXTRA ONLY: appended at the end of Student Data.\n        render_overall_competitive_subject_strength(student_data, is_neet)\n        render_average_category_graphs(student_data, is_neet, scope_label="Student")\n'''
+          if anchor not in text:
+              raise SystemExit("Student insertion anchor not found")
+          text = text.replace(anchor, replacement, 1)
+
+          anchor = '''    # Keep the same extra Student Data analysis in search mode.\n    render_overall_competitive_subject_strength(student_data, is_neet)\n'''
+          replacement = '''    # Keep the same extra Student Data analysis in search mode.\n    render_overall_competitive_subject_strength(student_data, is_neet)\n    render_average_category_graphs(student_data, is_neet, scope_label="Student")\n'''
+          if anchor not in text:
+              raise SystemExit("Search-student insertion anchor not found")
+          text = text.replace(anchor, replacement, 1)
+
+          p.write_text(text, encoding="utf-8")
+          PY
+
+          python -m py_compile main.py
+
+      - name: Commit dashboard changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add main.py
+          git diff --cached --quiet && { echo "No dashboard changes needed."; exit 0; }
+          git commit -m "Add grouped average performance graphs"
+          git push origin main
