@@ -753,7 +753,7 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                     "scrollZoom": False,
                     "doubleClick": False,
                 },
-                theme="plotly",
+                theme=None,
             )
 
         with c2:
@@ -791,7 +791,7 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                         "scrollZoom": False,
                         "doubleClick": False,
                     },
-                    theme="plotly",
+                    theme=None,
                 )
         st.markdown("---")
 def render_category_section(student_df, category_name, allowed_subjects):
