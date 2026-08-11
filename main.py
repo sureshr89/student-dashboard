@@ -689,6 +689,14 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
             f"BLT and Practice Tests (PT) excluded | Absent scores excluded"
         )
 
+        # Keep subject colors consistent across every combination graph.
+        subject_colors = {
+            "Physics": "#4C78A8",
+            "Chemistry": "#F58518",
+            "Maths": "#54A24B",
+            "Biology": "#E45756",
+        }
+
         c1, c2 = st.columns(2)
 
         with c1:
@@ -697,6 +705,8 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                 x="Subject",
                 y="Average Marks",
                 text="Average Marks",
+                color="Subject",
+                color_discrete_map=subject_colors,
                 title=f"{scope_label} – {group_name} – Average Marks by Subject",
             )
             fig_bar.update_traces(
@@ -738,6 +748,8 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                     pie_df,
                     names="Subject",
                     values="Average Marks",
+                    color="Subject",
+                    color_discrete_map=subject_colors,
                     title=f"{scope_label} – {group_name} – Subject Strength",
                     hole=0.25,
                 )
@@ -1245,8 +1257,13 @@ def main():
         for cat in categories:
             render_category_section(student_data, cat, allowed_subjects)
 
-        # EXTRA ONLY: appended at the end of Student Data.
-            render_combination_subject_analysis(student_data, is_neet, scope_label="Student")
+        # EXTRA ONLY: appended once, after ALL Student Data category sections.
+        st.markdown("---")
+        render_combination_subject_analysis(
+            student_data,
+            is_neet,
+            scope_label="Student",
+        )
 
 
 if __name__ == "__main__":
