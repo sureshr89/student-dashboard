@@ -9,11 +9,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Injected CSS and JavaScript to fully lock down selectbox inputs from typing or editing
+# Styling and selectbox behavior
 st.markdown(
     """
     <style>
-    /* Prevent text selection and highlighting across the app */
     html, body, [class*="css"] {
         touch-action: manipulation;
         -webkit-user-select: none;
@@ -27,22 +26,17 @@ st.markdown(
     .main-header {
         background-color: #385b96; color: white; padding: 12px 15px;
         font-size: 24px; font-weight: bold; font-family: sans-serif; margin-bottom: 20px;
-        border-radius: 5px;
-        text-align: center;
+        border-radius: 5px; text-align: center;
     }
 
     .section-header {
-        color: #385b96; font-size: 18px; font-weight: bold; margin-top: 20px; margin-bottom: 5px; font-family: sans-serif;
-        border-bottom: 2px solid #385b96;
-        padding-bottom: 5px;
+        color: #385b96; font-size: 18px; font-weight: bold;
+        margin-top: 20px; margin-bottom: 5px; font-family: sans-serif;
+        border-bottom: 2px solid #385b96; padding-bottom: 5px;
     }
 
-    /* Force all general text to be dark and readable */
-    p, span, label, div {
-        color: #1f2937;
-    }
+    p, span, label, div { color: #1f2937; }
 
-    /* Ensure tables allow horizontal swipe/scroll without locking touch inputs */
     [data-testid="stDataFrame"] {
         width: 100% !important;
         overflow-x: auto !important;
@@ -50,7 +44,6 @@ st.markdown(
         pointer-events: auto !important;
     }
 
-    /* Force Streamlit Navigation Buttons to have blue background and bright white text */
     .stButton > button {
         background-color: #385b96 !important;
         color: #ffffff !important;
@@ -59,32 +52,26 @@ st.markdown(
         border-radius: 6px !important;
         width: 100% !important;
     }
-    .stButton > button p {
-        color: #ffffff !important;
-    }
+    .stButton > button p { color: #ffffff !important; }
     .stButton > button:hover {
         background-color: #2c4775 !important;
         color: #ffffff !important;
     }
 
-    /* Fix Streamlit Selectbox and Input boxes */
     [data-baseweb="select"] > div, div[data-baseweb="input"] > div {
         background-color: #ffffff !important;
         color: #1f2937 !important;
         border-color: #385b96 !important;
     }
 
-    /* STRICT LOCK: Completely disable text cursor, typing, and deletions inside select boxes */
     [data-baseweb="select"] input {
         caret-color: transparent !important;
         pointer-events: none !important;
         user-select: none !important;
     }
-    
-    [data-baseweb="select"] div[data-testid="stMarkdownContainer"], 
-    [data-baseweb="select"] [role="button"] {
-        pointer-events: auto !important;
-    }
+
+    [data-baseweb="select"] div[data-testid="stMarkdownContainer"],
+    [data-baseweb="select"] [role="button"] { pointer-events: auto !important; }
 
     [data-baseweb="popover"] div, [role="option"] div {
         color: #1f2937 !important;
@@ -92,13 +79,8 @@ st.markdown(
     }
 
     @media (max-width: 900px) {
-        .main-header {
-            font-size: 20px;
-            padding: 10px;
-        }
-        .section-header {
-            font-size: 16px;
-        }
+        .main-header { font-size: 20px; padding: 10px; }
+        .section-header { font-size: 16px; }
         [data-testid="column"] {
             width: 100% !important;
             flex: 100% !important;
@@ -107,7 +89,6 @@ st.markdown(
     }
     </style>
 
-    <!-- Comprehensive JavaScript injection to suppress mobile soft keyboards and block typing -->
     <script>
         function suppressKeyboard() {
             let inputs = document.querySelectorAll('[data-baseweb="select"] input');
@@ -118,27 +99,26 @@ st.markdown(
                 input.style.pointerEvents = 'none';
             });
         }
-
         document.addEventListener('DOMContentLoaded', () => {
             suppressKeyboard();
             const observer = new MutationObserver(suppressKeyboard);
             observer.observe(document.body, { childList: true, subtree: true });
         });
-
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function() {
             setTimeout(() => {
                 let activeEl = document.activeElement;
-                if (activeEl && activeEl.tagName === 'INPUT') {
-                    activeEl.blur();
-                }
+                if (activeEl && activeEl.tagName === 'INPUT') activeEl.blur();
             }, 10);
         }, true);
     </script>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
 
+# -----------------------------------------------------------------------------
+# DATA LOADING
+# -----------------------------------------------------------------------------
 @st.cache_data()
 def load_and_process_data():
     sheet_url = "https://docs.google.com/spreadsheets/d/1J8daLHn7YCZTDQ1nCREmQIUCVi3wXuJx9Qv8h1ntay0/export?format=xlsx"
@@ -155,6 +135,8 @@ def load_and_process_data():
         "Top_Performers_Summary",
     ]
 
+    # IMPORTANT: This roster is the single source of truth.
+    # User ID -> Batch -> Student Name. Never infer a batch from a test name.
     student_roster = {
         "Sankalp-JEE-WD-Madhapur-(26-27)-A": {
             "v_4102627828036953": "Kommu Navya",
@@ -262,6 +244,7 @@ def load_and_process_data():
             "v_4102643666550411": "Jampala Shanthan Kumar",
             "v_4102439835972285": "P Rohith",
             "v_4102643721870649": "Punem Abhinav Sidhardha",
+            "v_4102644496422857": "G Rishith Kumar",
             "v_4102613269351659": "U Hari Prasad",
             "v_4102415182975883": "Mani Harsha",
             "v_4102644808411807": "Elpula Ashwan Chandra",
@@ -312,6 +295,41 @@ def load_and_process_data():
             "v_4102653374842789": "Hima Shankar Yashwanth",
             "v_4102648017567625": "Karthikeya Reddy Rachamallu",
         },
+        "Dhristi-NEET-WD-Madhapur-(26-27)-A": {
+            "v_4102643480684961": "B Vanshika",
+            "v_4102644556073159": "Vishishta",
+            "v_4102637539201437": "K Brammini",
+            "v_4102645831164057": "D Soukhya",
+            "v_4102646329288525": "K Vashishta",
+            "v_4102603971545807": "Konduru Vishwateja",
+            "v_4102437710242015": "Ch Prudhvi Teja",
+            "v_4102647796216789": "Bhanu Teja",
+            "v_4102647863300435": "Geethika",
+            "v_4102648618743607": "Gujjeti Manaswi",
+            "v_4102610689230795": "G Rithika",
+            "v_4102651350713031": "Vadla Manoghnya",
+            "v_4102651578743187": "B Akshaya",
+            "v_4102650579507433": "N Alekhya",
+            "v_4102650579440079": "N Meghana",
+            "v_4102652081777189": "A Nithya Sri",
+            "v_4102631744984203": "Navya Sri",
+            "v_4102651422561677": "Ashreeth Reddy",
+            "v_4102650465823267": "Sidam Gomukhi",
+            "v_4102652782264705": "N Victoria",
+            "v_4102650979247345": "Pasupunoori Samskruthi",
+            "v_4102652488688651": "J Gokul",
+            "v_4102652572604671": "Chalkuti Kranthi Lakshitha",
+            "v_4102648539804057": "Thadepu Rahul",
+            "v_4102631901998873": "T Akshara",
+            "v_4102653481141521": "Sri Vineetha Sri Vineetha",
+            "v_4102653091443327": "V Rahithya",
+            "v_4102653549632173": "Shravanthi P",
+            "v_4102473017254525": "Sharath Chandra",
+            "v_4102441387257305": "Pundikura Abhignya Reddy Abhignya",
+            "v_4102642920912055": "Sushanth",
+            "v_4102654394357387": "M Gayatri",
+            "v_4102652683013555": "Karthik",
+        },
         "Dhristi-JEE-WD-Madhapur-(26-27)-E": {
             "v_4102630661117777": "T Sahith",
             "v_4102645790154227": "P Lokesh Goud",
@@ -351,55 +369,25 @@ def load_and_process_data():
             "v_4102653253168799": "M Akshay Kiran Reddy",
             "v_4102650143245809": "K Karthikeya",
         },
-        "Dhristi-NEET-WD-Madhapur-(26-27)-A": {
-            "v_4102643480684961": "B Vanshika",
-            "v_4102644556073159": "Vishishta",
-            "v_4102637539201437": "K Brammini",
-            "v_4102645831164057": "D Soukhya",
-            "v_4102646329288525": "K Vashishta",
-            "v_4102603971545807": "Konduru Vishwateja",
-            "v_4102437710242015": "Ch Prudhvi Teja",
-            "v_4102647796216789": "Bhanu Teja",
-            "v_4102647863300435": "Geethika",
-            "v_4102648618743607": "Gujjeti Manaswi",
-            "v_4102610689230795": "G Rithika",
-            "v_4102651350713031": "Vadla Manoghnya",
-            "v_4102651578743187": "B Akshaya",
-            "v_4102650579507433": "N Alekhya",
-            "v_4102650579440079": "N Meghana",
-            "v_4102652081777189": "A Nithya Sri",
-            "v_4102631744984203": "Navya Sri",
-            "v_4102651422561677": "Ashreeth Reddy",
-            "v_4102650465823267": "Sidam Gomukhi",
-            "v_4102652782264705": "N Victoria",
-            "v_4102650979247345": "Pasupunoori Samskruthi",
-            "v_4102652488688651": "J Gokul",
-            "v_4102652572604671": "Chalkuti Kranthi Lakshitha",
-            "v_4102648539804057": "Thadepu Rahul",
-            "v_4102631901998873": "T Akshara",
-            "v_4102653481141521": "Sri Vineetha Sri Vineetha",
-            "v_4102653091443327": "V Rahithya",
-            "v_4102653549632173": "Shravanthi P",
-            "v_4102473017254525": "Sharath Chandra",
-            "v_4102441387257305": "Pundikura Abhignya Reddy Abhignya",
-            "v_4102642920912055": "Sushanth",
-            "v_4102654394357387": "M Gayatri",
-            "v_4102652683013555": "Karthik",
-        },
     }
 
-    # The supplied roster is the single source of truth for batch assignment.
-    # User ID is the primary key; student name is only a fallback when no UID is present.
+    # Deterministic batch order. This was missing in the broken deployment.
+    ordered_batches = [
+        "Sankalp-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-C",
+        "Dhristi-NEET-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-E",
+    ]
+
     id_to_batch = {}
     id_to_proper_name = {}
     name_to_batches = {}
     name_to_proper_names = {}
 
+    # Validate roster. Never silently overwrite a UID assignment.
     for batch in ordered_batches:
-        if batch not in student_roster:
-            continue
-        for uid, proper_name in student_roster[batch].items():
-            # Never silently overwrite a UID-to-batch assignment.
+        for uid, proper_name in student_roster.get(batch, {}).items():
             if uid in id_to_batch and id_to_batch[uid] != batch:
                 raise ValueError(
                     f"Duplicate User ID in roster: {uid} is assigned to both "
@@ -407,17 +395,12 @@ def load_and_process_data():
                 )
             id_to_batch[uid] = batch
             id_to_proper_name[uid] = proper_name
+            clean_name = proper_name.strip().lower()
+            name_to_batches.setdefault(clean_name, set()).add(batch)
+            name_to_proper_names.setdefault(clean_name, set()).add(proper_name)
 
-            clean_name_lower = proper_name.strip().lower()
-            name_to_batches.setdefault(clean_name_lower, set()).add(batch)
-            name_to_proper_names.setdefault(clean_name_lower, set()).add(proper_name)
-
-    # Names are used only when they belong to exactly one batch.
-    # If the same name exists in multiple batches, a row without UID is not guessed.
     unique_name_to_batch = {
-        name: next(iter(batches))
-        for name, batches in name_to_batches.items()
-        if len(batches) == 1
+        name: next(iter(batches)) for name, batches in name_to_batches.items() if len(batches) == 1
     }
     unique_name_to_proper_name = {
         name: next(iter(names))
@@ -425,12 +408,13 @@ def load_and_process_data():
         if len(name_to_batches[name]) == 1 and len(names) == 1
     }
 
-    # Explicit roster validation for the known E-batch student.
+    # Explicit validation from the supplied roster: Rishith is E batch.
     rishith_uid = "v_4102644496422857"
-    if id_to_batch.get(rishith_uid) != "Dhristi-JEE-WD-Madhapur-(26-27)-E":
+    expected_rishith_batch = "Dhristi-JEE-WD-Madhapur-(26-27)-E"
+    if id_to_batch.get(rishith_uid) != expected_rishith_batch:
         raise ValueError(
             "Roster error: G Rishith Kumar (v_4102644496422857) must belong to "
-            "Dhristi-JEE-WD-Madhapur-(26-27)-E."
+            f"{expected_rishith_batch}."
         )
 
     global_counter = 0
@@ -441,197 +425,149 @@ def load_and_process_data():
 
         df.columns = [str(c).strip() for c in df.columns]
         required_cols = ["Student Name", "Physics", "Chemistry", "Total"]
+        if not all(col in df.columns for col in required_cols):
+            continue
 
-        if all(col in df.columns for col in required_cols):
-            if "Test Name" not in df.columns:
-                df["Test Name"] = sheet_name
+        if "Test Name" not in df.columns:
+            df["Test Name"] = sheet_name
 
-            cols_to_keep = [
-                "Student Name",
-                "Test Name",
-                "Physics",
-                "Chemistry",
-                "Total",
-            ]
-            has_uid = "User ID" in df.columns
-            if has_uid:
-                cols_to_keep.append("User ID")
-            if "Maths" in df.columns:
-                cols_to_keep.append("Maths")
-            if "Biology" in df.columns:
-                cols_to_keep.append("Biology")
+        cols_to_keep = ["Student Name", "Test Name", "Physics", "Chemistry", "Total"]
+        has_uid = "User ID" in df.columns
+        if has_uid:
+            cols_to_keep.append("User ID")
+        if "Maths" in df.columns:
+            cols_to_keep.append("Maths")
+        if "Biology" in df.columns:
+            cols_to_keep.append("Biology")
 
-            subset = df[cols_to_keep].copy()
-            subset = subset.dropna(subset=["Student Name"])
+        subset = df[cols_to_keep].copy().dropna(subset=["Student Name"])
+        valid_rows = []
 
-            valid_rows = []
+        for _, test_row in subset.iterrows():
+            raw_name = str(test_row["Student Name"]).strip()
+            name_lower = raw_name.lower()
+            uid_val = str(test_row["User ID"]).strip() if has_uid and pd.notna(test_row.get("User ID")) else ""
 
-            for _, test_row in subset.iterrows():
-                sheet_name_val = str(test_row["Student Name"]).strip()
-                name_lower = sheet_name_val.lower()
-                uid_val = str(test_row["User ID"]).strip() if has_uid else ""
+            assigned_batch = None
+            final_name = raw_name
 
-                assigned_batch = None
-                final_clean_name = sheet_name_val
+            # UID is authoritative. Test names never determine batch.
+            if uid_val and uid_val in id_to_batch:
+                assigned_batch = id_to_batch[uid_val]
+                final_name = id_to_proper_name[uid_val]
+            elif not uid_val and name_lower in unique_name_to_batch:
+                assigned_batch = unique_name_to_batch[name_lower]
+                final_name = unique_name_to_proper_name.get(name_lower, raw_name)
 
-                # UID is authoritative. Never infer a different batch from the test name.
-                if uid_val and uid_val in id_to_batch:
-                    assigned_batch = id_to_batch[uid_val]
-                    final_clean_name = id_to_proper_name[uid_val]
-                elif name_lower in unique_name_to_batch:
-                    assigned_batch = unique_name_to_batch[name_lower]
-                    final_clean_name = unique_name_to_proper_name.get(name_lower, sheet_name_val)
-
-                if assigned_batch:
-                    # Batch membership comes only from the supplied roster.
-                    # Do not move or exclude a student based on test-name/class wording.
-                    row_dict = test_row.to_dict()
-                    row_dict["Classroom"] = assigned_batch
-                    row_dict["Student Name"] = final_clean_name
-                    row_dict["row_index"] = global_counter
-                    global_counter += 1
-                    valid_rows.append(row_dict)
-
-            if not valid_rows:
+            if assigned_batch is None:
                 continue
 
-            processed_subset = pd.DataFrame(valid_rows)
+            row_dict = test_row.to_dict()
+            row_dict["Classroom"] = assigned_batch
+            row_dict["Student Name"] = final_name
+            row_dict["row_index"] = global_counter
+            global_counter += 1
+            valid_rows.append(row_dict)
 
-            def categorize_test(tr):
-                name_upper = str(tr["Test Name"]).upper()
-                sheet_upper = str(sheet_name).upper()
-                combined = f"{sheet_upper} {name_upper}"
+        if not valid_rows:
+            continue
 
-                # Keep each major test pattern separate
-                if "PRE FINAL 1" in combined or "PREFINAL 1" in combined or "PRE-FINAL 1" in combined:
-                    return "Pre Final 1"
-                if "PRE FINAL 2" in combined or "PREFINAL 2" in combined or "PRE-FINAL 2" in combined:
-                    return "Pre Final 2"
-                if "PRE FINAL 3" in combined or "PREFINAL 3" in combined or "PRE-FINAL 3" in combined:
-                    return "Pre Final 3"
-                if "HALF YEAR" in combined or "HALFYEAR" in combined or "HALF-YEAR" in combined:
-                    return "Half Yearly"
-                if "QUARTERLY" in combined or "QUARTER" in combined:
-                    return "Quarterly"
+        processed_subset = pd.DataFrame(valid_rows)
 
-                if "EAPCET" in combined and "RT" in combined:
-                    return "EAPCET RT"
-                if "EAPCET" in combined and "CT" in combined:
-                    return "EAPCET CT"
+        def categorize_test(tr):
+            name_upper = str(tr["Test Name"]).upper()
+            sheet_upper = str(sheet_name).upper()
+            combined = f"{sheet_upper} {name_upper}"
 
-                if "NEET" in combined and "PRACTICE" in combined:
-                    return "NEET Practice Tests"
-                if "NEET" in combined and "PART" in combined:
-                    return "NEET Part Tests"
-                if "NEET" in combined and "RT" in combined:
-                    return "NEET RT"
-                if "NEET" in combined and "CT" in combined:
-                    return "NEET CT"
+            if "PRE FINAL 1" in combined or "PREFINAL 1" in combined or "PRE-FINAL 1" in combined:
+                return "Pre Final 1"
+            if "PRE FINAL 2" in combined or "PREFINAL 2" in combined or "PRE-FINAL 2" in combined:
+                return "Pre Final 2"
+            if "PRE FINAL 3" in combined or "PREFINAL 3" in combined or "PRE-FINAL 3" in combined:
+                return "Pre Final 3"
+            if "HALF YEAR" in combined or "HALFYEAR" in combined or "HALF-YEAR" in combined:
+                return "Half Yearly"
+            if "QUARTERLY" in combined or "QUARTER" in combined:
+                return "Quarterly"
+            if "EAPCET" in combined and "RT" in combined:
+                return "EAPCET RT"
+            if "EAPCET" in combined and "CT" in combined:
+                return "EAPCET CT"
+            if "NEET" in combined and "PRACTICE" in combined:
+                return "NEET Practice Tests"
+            if "NEET" in combined and "PART" in combined:
+                return "NEET Part Tests"
+            if "NEET" in combined and "RT" in combined:
+                return "NEET RT"
+            if "NEET" in combined and "CT" in combined:
+                return "NEET CT"
+            if "PART" in combined:
+                return "Part Tests"
+            if "RT" in combined and "MAIN" in combined:
+                return "RT Mains"
+            if "CT" in combined and "MAIN" in combined:
+                return "CT Mains"
+            if "RT" in combined and "ADV" in combined:
+                return "RT Advanced"
+            if "CT" in combined and "ADV" in combined:
+                return "CT Advanced"
+            if "UT" in combined or "UNIT" in combined or "IPE" in combined:
+                return "Unit Tests"
+            if "EAPCET" in combined:
+                return "EAPCET"
+            if "BASE LINE" in combined or "BLT" in combined:
+                return "Base Line Test"
+            if "NEET" in combined:
+                return "NEET Tests"
+            return "Other"
 
-                # Completely separate Part Tests from RTs/Mains/Advanced categories
-                if "PART" in combined:
-                    return "Part Tests"
-                if "RT" in combined and "MAIN" in combined:
-                    return "RT Mains"
-                if "CT" in combined and "MAIN" in combined:
-                    return "CT Mains"
-                if "RT" in combined and "ADV" in combined:
-                    return "RT Advanced"
-                if "CT" in combined and "ADV" in combined:
-                    return "CT Advanced"
-                if (
-                    "UT" in combined
-                    or "UNIT" in combined
-                    or "IPE" in combined
-                ):
-                    return "Unit Tests"
-                if "EAPCET" in combined:
-                    return "EAPCET"
-                if "BASE LINE" in combined or "BLT" in combined:
-                    return "Base Line Test"
-                if "NEET" in combined:
-                    return "NEET Tests"
-                return "Other"
+        processed_subset["Category"] = processed_subset.apply(categorize_test, axis=1)
 
-            processed_subset["Category"] = processed_subset.apply(
-                categorize_test, axis=1
-            )
-            for subj in ["Physics", "Chemistry", "Maths", "Biology", "Total"]:
-                if subj in processed_subset.columns:
-                    processed_subset[subj] = pd.to_numeric(
-                        processed_subset[subj], errors="coerce"
-                    )
+        for subj in ["Physics", "Chemistry", "Maths", "Biology", "Total"]:
+            if subj in processed_subset.columns:
+                processed_subset[subj] = pd.to_numeric(processed_subset[subj], errors="coerce")
 
-            # Stable student identity: UID first, normalized name only when UID is absent.
-            if "User ID" in processed_subset.columns:
-                uid_clean = processed_subset["User ID"].fillna("").astype(str).str.strip()
-                name_clean = processed_subset["Student Name"].fillna("").astype(str).str.strip().str.lower()
-                processed_subset["Student Key"] = uid_clean.where(uid_clean != "", "NAME:" + name_clean)
-            else:
-                processed_subset["Student Key"] = (
-                    "NAME:" + processed_subset["Student Name"].fillna("").astype(str).str.strip().str.lower()
-                )
+        # Stable student identity: UID first, normalized name only for rows without UID.
+        if "User ID" in processed_subset.columns:
+            uid_clean = processed_subset["User ID"].fillna("").astype(str).str.strip()
+            name_clean = processed_subset["Student Name"].fillna("").astype(str).str.strip().str.lower()
+            processed_subset["Student Key"] = uid_clean.where(uid_clean != "", "NAME:" + name_clean)
+        else:
+            processed_subset["Student Key"] = "NAME:" + processed_subset["Student Name"].fillna("").astype(str).str.strip().str.lower()
 
-            all_data.append(processed_subset)
+        all_data.append(processed_subset)
 
-    if all_data:
-        combined_df = pd.concat(all_data, ignore_index=True)
-        
-        combined_df = combined_df.sort_values(by="row_index", ascending=True)
+    if not all_data:
+        return pd.DataFrame()
 
-        # Deduplicate the same student/test/category without merging students who share a name.
-        combined_df = combined_df.drop_duplicates(
-            subset=["Student Key", "Classroom", "Test Name", "Category"],
-            keep="last",
-        )
+    combined_df = pd.concat(all_data, ignore_index=True).sort_values(by="row_index", ascending=True)
 
-        combined_df["Test Name"] = combined_df["Test Name"].astype(str)
-        # Rank only within the same batch + test + category.
-        combined_df["Rank"] = combined_df.groupby(
-            ["Classroom", "Test Name", "Category"]
-        )["Total"].rank(ascending=False, method="min")
-        return combined_df
-    return pd.DataFrame()
+    # Remove duplicate uploads of the same student/test/category only.
+    combined_df = combined_df.drop_duplicates(
+        subset=["Student Key", "Classroom", "Test Name", "Category"], keep="last"
+    )
+
+    combined_df["Test Name"] = combined_df["Test Name"].astype(str)
+
+    # Rank within batch + test + category. Absent Total values are not ranked.
+    combined_df["Rank"] = combined_df.groupby(
+        ["Classroom", "Test Name", "Category"]
+    )["Total"].rank(ascending=False, method="min")
+
+    return combined_df.reset_index(drop=True)
 
 
 def highlight_average_row(row):
     if row["Test Name"] == "Average":
-        return ["background-color: #00e600; color: #1f2937; font-weight: bold"] * len(
-            row
-        )
+        return ["background-color: #00e600; color: #1f2937; font-weight: bold"] * len(row)
     return ["background-color: #ffffff; color: #1f2937"] * len(row)
 
 
-
 def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
-    """
-    Render the requested grouped subject-average analysis at the end of the page.
-
-    Improvement Trajectory graphs are intentionally untouched elsewhere.
-
-    JEE groups:
-      - RT Mains + CT Mains
-      - RT Advanced + CT Advanced
-      - EAPCET
-      - School Exams
-
-    NEET groups:
-      - NEET RT + NEET CT
-      - School Exams
-
-    BLT and Practice Tests are not included.
-    Absent/non-numeric marks are excluded from calculations.
-    """
     if is_neet:
         groups = [
             ("NEET RT + NEET CT", ["NEET RT", "NEET CT"]),
-            (
-                "School Exams",
-                [
-                    "Unit Tests", "Quarterly", "Half Yearly",
-                    "Pre Final 1", "Pre Final 2", "Pre Final 3",
-                ],
-            ),
+            ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
         ]
         subjects = ["Physics", "Chemistry", "Biology"]
     else:
@@ -639,290 +575,131 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
             ("RT Mains + CT Mains", ["RT Mains", "CT Mains"]),
             ("RT Advanced + CT Advanced", ["RT Advanced", "CT Advanced"]),
             ("EAPCET", ["EAPCET RT", "EAPCET CT", "EAPCET"]),
-            (
-                "School Exams",
-                [
-                    "Unit Tests", "Quarterly", "Half Yearly",
-                    "Pre Final 1", "Pre Final 2", "Pre Final 3",
-                ],
-            ),
+            ("School Exams", ["Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3"]),
         ]
         subjects = ["Physics", "Chemistry", "Maths"]
 
-    st.markdown(
-        '<div class="section-header">Average Performance Analysis</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "These graphs show subject averages for the requested test combinations. "
-        "BLT and Practice Tests (PT) are excluded. Absent scores are excluded."
-    )
+    st.markdown('<div class="section-header">Average Performance Analysis</div>', unsafe_allow_html=True)
+    st.caption("Subject averages for the requested test combinations. BLT and Practice Tests are excluded. Absent scores are excluded.")
 
     for group_name, categories in groups:
         group_df = data[data["Category"].isin(categories)].copy()
         if group_df.empty:
             continue
 
-        if "Test Name" not in group_df.columns:
-            continue
-
-        # A test contributes to subject analysis when at least one requested subject
-        # has a valid numeric score. Total is not required for subject averages.
-        if "Total" in group_df.columns:
-            group_df["Total"] = pd.to_numeric(group_df["Total"], errors="coerce")
         subject_columns_present = [s for s in subjects if s in group_df.columns]
         if not subject_columns_present:
             continue
-        subject_numeric = group_df[subject_columns_present].apply(pd.to_numeric, errors="coerce")
-        valid_test_mask = subject_numeric.notna().any(axis=1) & group_df["Test Name"].notna()
-        valid_test_names = (
-            group_df.loc[valid_test_mask, "Test Name"].astype(str).unique().tolist()
-        )
-        if not valid_test_names:
-            continue
 
-        group_df = group_df[group_df["Test Name"].astype(str).isin(valid_test_names)].copy()
-
-        # Subject average across all valid scores in the selected combination.
         rows = []
-        for subject in subjects:
-            if subject not in group_df.columns:
-                continue
-
+        for subject in subject_columns_present:
             values = pd.to_numeric(group_df[subject], errors="coerce").dropna()
             if not values.empty:
-                rows.append(
-                    {
-                        "Subject": subject,
-                        "Average Marks": values.mean(),
-                    }
-                )
+                rows.append({"Subject": subject, "Average Marks": values.mean()})
 
         if not rows:
             continue
 
         subject_df = pd.DataFrame(rows)
         overall_subject_average = subject_df["Average Marks"].mean()
-        tests_counted = len(valid_test_names)
+        tests_counted = group_df["Test Name"].dropna().astype(str).nunique()
 
-        st.markdown(
-            f'<div class="section-header">{group_name}</div>',
-            unsafe_allow_html=True,
+        st.markdown(f'<div class="section-header">{group_name}</div>', unsafe_allow_html=True)
+        st.markdown(f"**Average of Subject Averages: {overall_subject_average:.2f} marks** | **Tests Considered: {tests_counted}**")
+
+        fig_bar = px.bar(
+            subject_df,
+            x="Subject",
+            y="Average Marks",
+            text="Average Marks",
+            color="Subject",
+            title=f"{scope_label} – {group_name} – Average Marks by Subject",
         )
-
-        st.markdown(
-            f"**Average of Subject Averages: {overall_subject_average:.2f} marks**  |  "
-            f"**Tests Considered: {tests_counted}**"
+        fig_bar.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+        fig_bar.add_hline(
+            y=overall_subject_average,
+            line_dash="dash",
+            annotation_text=f"Overall Avg: {overall_subject_average:.2f}",
+            annotation_position="top left",
         )
-
-        test_list = ", ".join(valid_test_names)
-        st.caption(
-            f"Tests used: {test_list} | "
-            f"BLT and Practice Tests (PT) excluded | Absent scores excluded"
+        fig_bar.update_layout(
+            height=360,
+            margin=dict(l=20, r=20, t=60, b=20),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(255,255,255,0.20)",
+            showlegend=False,
         )
-
-        # Keep subject colors consistent across every combination graph.
-        subject_colors = {
-            "Physics": "#4C78A8",
-            "Chemistry": "#F58518",
-            "Maths": "#54A24B",
-            "Biology": "#E45756",
-        }
-
-        with st.container():
-
-            fig_bar = px.bar(
-                subject_df,
-                x="Subject",
-                y="Average Marks",
-                text="Average Marks",
-                color="Subject",
-                color_discrete_map=subject_colors,
-                title=f"{scope_label} – {group_name} – Average Marks by Subject",
-            )
-            fig_bar.update_traces(
-                texttemplate="%{text:.2f}",
-                textposition="outside",
-                textfont=dict(color="#1f2937"),
-            )
-            fig_bar.add_hline(
-                y=overall_subject_average,
-                line_dash="dash",
-                annotation_text=f"Overall Avg: {overall_subject_average:.2f}",
-                annotation_position="top left",
-                annotation_font=dict(color="#1f2937"),
-            )
-            fig_bar.update_layout(
-                xaxis_title="Subject",
-                yaxis_title="Average Marks",
-                height=360,
-                margin=dict(l=20, r=20, t=60, b=20),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(255,255,255,0.20)",
-                font=dict(color="#1f2937"),
-                title_font=dict(color="#1f2937", size=16),
-                showlegend=False,
-                xaxis=dict(
-                    title_font=dict(color="#1f2937"),
-                    tickfont=dict(color="#1f2937"),
-                    gridcolor="rgba(80,80,80,0.15)",
-                    zerolinecolor="rgba(80,80,80,0.20)",
-                ),
-                yaxis=dict(
-                    title_font=dict(color="#1f2937"),
-                    tickfont=dict(color="#1f2937"),
-                    gridcolor="rgba(80,80,80,0.15)",
-                    zerolinecolor="rgba(80,80,80,0.20)",
-                ),
-            )
-            st.plotly_chart(
-                fig_bar,
-                use_container_width=True,
-                config={
-                    "displayModeBar": False,
-                    "staticPlot": True,
-                    "scrollZoom": False,
-                    "doubleClick": False,
-                },
-                theme=None,
-            )
-
+        st.plotly_chart(
+            fig_bar,
+            use_container_width=True,
+            config={"displayModeBar": False, "staticPlot": True, "scrollZoom": False, "doubleClick": False},
+            theme=None,
+        )
         st.markdown("---")
+
+
 def render_category_section(student_df, category_name, allowed_subjects):
     cat_df = student_df[student_df["Category"] == category_name].copy()
-
     if cat_df.empty:
         return
 
     cat_df = cat_df.sort_values(by="Test Name")
-    st.markdown(
-        f'<div class="section-header">{category_name}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="section-header">{category_name}</div>', unsafe_allow_html=True)
 
-    available_cols = ["Test Name"]
-    for col in allowed_subjects:
-        if col in cat_df.columns and col not in available_cols:
-            available_cols.append(col)
-    
-    if "Rank" in cat_df.columns and "Rank" not in available_cols:
+    available_cols = ["Test Name"] + [c for c in allowed_subjects if c in cat_df.columns]
+    if "Rank" in cat_df.columns:
         available_cols.append("Rank")
 
     display_df = cat_df[available_cols].copy()
-
     for col in available_cols:
         if col == "Test Name":
             continue
-        elif col == "Rank":
-            display_df[col] = display_df[col].apply(
-                lambda x: "N/A" if pd.isna(x) else str(int(round(x)))
-            )
+        if col == "Rank":
+            display_df[col] = display_df[col].apply(lambda x: "N/A" if pd.isna(x) else str(int(round(x))))
         else:
-            display_df[col] = display_df[col].apply(
-                lambda x: "Absent" if pd.isna(x) else str(int(round(x)))
-            )
+            display_df[col] = display_df[col].apply(lambda x: "Absent" if pd.isna(x) else str(int(round(x))))
 
     avgs = {"Test Name": "Average"}
     for col in available_cols:
-        if col != "Test Name":
-            numeric_series = pd.to_numeric(cat_df[col], errors="coerce").dropna()
-            if not numeric_series.empty:
-                avgs[col] = f"{numeric_series.mean():.2f}"
-            else:
-                avgs[col] = "N/A"
+        if col == "Test Name":
+            continue
+        numeric_series = pd.to_numeric(cat_df[col], errors="coerce").dropna()
+        avgs[col] = f"{numeric_series.mean():.2f}" if not numeric_series.empty else "N/A"
 
-    display_df = pd.concat(
-        [display_df, pd.DataFrame([avgs])], ignore_index=True
-    )
+    display_df = pd.concat([display_df, pd.DataFrame([avgs])], ignore_index=True)
     styled_df = display_df.style.apply(highlight_average_row, axis=1)
 
-    column_config_dict = {}
-    for col in display_df.columns:
-        if col != "Test Name":
-            column_config_dict[col] = st.column_config.TextColumn(col)
+    column_config_dict = {c: st.column_config.TextColumn(c) for c in display_df.columns if c != "Test Name"}
 
     col_table, col_chart = st.columns([7, 3])
-
     with col_table:
-        st.dataframe(
-            styled_df,
-            column_config=column_config_dict,
-            hide_index=True,
-            use_container_width=True,
-            selection_mode=None,
-        )
+        st.dataframe(styled_df, column_config=column_config_dict, hide_index=True, use_container_width=True, selection_mode=None)
 
     with col_chart:
-        st.markdown(
-            f"<div style='text-align: center; color: #385b96; font-weight: bold;"
-            f" margin-top: 10px;'>Improvement Trajectory</div>",
-            unsafe_allow_html=True,
-        )
-
-        plot_df = (
-            cat_df[["Test Name", "Total"]].copy()
-            if "Total" in cat_df.columns
-            else pd.DataFrame()
-        )
+        st.markdown("<div style='text-align: center; color: #385b96; font-weight: bold; margin-top: 10px;'>Improvement Trajectory</div>", unsafe_allow_html=True)
+        plot_df = cat_df[["Test Name", "Total"]].copy() if "Total" in cat_df.columns else pd.DataFrame()
         if not plot_df.empty:
             plot_df["Total"] = pd.to_numeric(plot_df["Total"], errors="coerce")
             plot_df = plot_df.dropna(subset=["Total"])
-
         if not plot_df.empty:
             fig = px.line(plot_df, x="Test Name", y="Total", markers=True)
             fig.update_xaxes(visible=False)
-            fig.update_yaxes(
-                title=None,
-                showgrid=True,
-                gridcolor="rgba(200, 200, 200, 0.3)",
-                zeroline=False,
-            )
-            fig.update_layout(
-                margin=dict(l=0, r=0, t=10, b=0),
-                height=220,
-                hovermode="x unified",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(color="#1f2937"),
-            )
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-                config={
-                    "displayModeBar": False,
-                    "staticPlot": True,
-                    "scrollZoom": False,
-                    "doubleClick": False,
-                },
-                theme="streamlit",
-            )
+            fig.update_yaxes(title=None, showgrid=True, zeroline=False)
+            fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=220, hovermode="x unified", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "staticPlot": True, "scrollZoom": False, "doubleClick": False}, theme="streamlit")
         else:
             st.info("No valid test scores for trajectory.")
 
 
-
 def render_batch_analysis_view(batch_data, is_neet):
-    st.markdown(
-        '<div class="section-header">Executive Batch Dashboard - Class Averages</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="section-header">Executive Batch Dashboard - Class Averages</div>', unsafe_allow_html=True)
 
     if is_neet:
         subject_cols = ["Physics", "Chemistry", "Biology"]
-        categories = [
-            "Base Line Test", "NEET RT", "NEET CT", "NEET Part Tests",
-            "NEET Practice Tests", "NEET Tests", "Unit Tests", "Quarterly",
-            "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3",
-            "Part Tests", "EAPCET", "Other",
-        ]
+        categories = ["Base Line Test", "NEET RT", "NEET CT", "NEET Part Tests", "NEET Practice Tests", "NEET Tests", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Part Tests", "EAPCET", "Other"]
     else:
         subject_cols = ["Physics", "Chemistry", "Maths"]
-        categories = [
-            "Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced",
-            "Part Tests", "EAPCET RT", "EAPCET CT", "EAPCET", "Unit Tests",
-            "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2",
-            "Pre Final 3", "Other",
-        ]
+        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Part Tests", "EAPCET RT", "EAPCET CT", "EAPCET", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Other"]
 
     for cat in categories:
         cat_data = batch_data[batch_data["Category"] == cat].copy()
@@ -933,71 +710,31 @@ def render_batch_analysis_view(batch_data, is_neet):
         for col in numeric_cols:
             cat_data[col] = pd.to_numeric(cat_data[col], errors="coerce")
 
-        # Each student's result contributes once to the test average. Absent/non-numeric
-        # marks are excluded by pandas mean; they are never treated as zero.
         grouped = cat_data.groupby("Test Name", as_index=False)[numeric_cols].mean()
-        grouped = grouped.sort_values(by="Test Name")
         if grouped.empty:
             continue
+        grouped = grouped.sort_values(by="Test Name")
 
         st.markdown(f"### {cat}")
         c1, c2 = st.columns(2)
 
         with c1:
-            st.markdown(
-                f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Subject Trend</div>",
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Subject Trend</div>", unsafe_allow_html=True)
             trend_subjects = [s for s in subject_cols if s in grouped.columns]
-            if trend_subjects:
-                melted_df = grouped.melt(
-                    id_vars=["Test Name"],
-                    value_vars=trend_subjects,
-                    var_name="Subject",
-                    value_name="Average Marks",
-                ).dropna(subset=["Average Marks"])
-                if not melted_df.empty:
-                    fig_subj = px.line(
-                        melted_df, x="Test Name", y="Average Marks",
-                        color="Subject", markers=True,
-                    )
-                    fig_subj.update_layout(
-                        margin=dict(l=0, r=0, t=10, b=0), height=260,
-                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                        font=dict(color="#1f2937"),
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                                    xanchor="right", x=1, font=dict(color="#1f2937")),
-                    )
-                    st.plotly_chart(
-                        fig_subj, use_container_width=True,
-                        config={"displayModeBar": False, "staticPlot": True,
-                                "scrollZoom": False, "doubleClick": False},
-                        theme="streamlit",
-                    )
+            melted_df = grouped.melt(id_vars=["Test Name"], value_vars=trend_subjects, var_name="Subject", value_name="Average Marks").dropna(subset=["Average Marks"])
+            if not melted_df.empty:
+                fig_subj = px.line(melted_df, x="Test Name", y="Average Marks", color="Subject", markers=True)
+                fig_subj.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=260, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#1f2937"))
+                st.plotly_chart(fig_subj, use_container_width=True, config={"displayModeBar": False, "staticPlot": True, "scrollZoom": False, "doubleClick": False}, theme="streamlit")
 
         with c2:
-            st.markdown(
-                f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Overall Trend</div>",
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Overall Trend</div>", unsafe_allow_html=True)
             if "Total" in grouped.columns:
                 total_df = grouped.dropna(subset=["Total"])
                 if not total_df.empty:
-                    fig_tot = px.line(
-                        total_df, x="Test Name", y="Total", markers=True,
-                        color_discrete_sequence=["#385b96"],
-                    )
-                    fig_tot.update_layout(
-                        margin=dict(l=0, r=0, t=10, b=0), height=260,
-                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                        font=dict(color="#1f2937"),
-                    )
-                    st.plotly_chart(
-                        fig_tot, use_container_width=True,
-                        config={"displayModeBar": False, "staticPlot": True,
-                                "scrollZoom": False, "doubleClick": False},
-                        theme="streamlit",
-                    )
+                    fig_tot = px.line(total_df, x="Test Name", y="Total", markers=True)
+                    fig_tot.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=260, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#1f2937"))
+                    st.plotly_chart(fig_tot, use_container_width=True, config={"displayModeBar": False, "staticPlot": True, "scrollZoom": False, "doubleClick": False}, theme="streamlit")
 
         st.markdown("---")
 
@@ -1005,85 +742,47 @@ def render_batch_analysis_view(batch_data, is_neet):
 
 
 def render_top_performers_view(batch_data, is_neet):
-    st.markdown(
-        '<div class="section-header">Batch Top Performers (Top 3 per Test)</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="section-header">Batch Top Performers (Top 3 per Test)</div>', unsafe_allow_html=True)
 
-    if is_neet:
-        allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
-    else:
-        allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
-
+    allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"] if is_neet else ["Physics", "Chemistry", "Maths", "Total"]
     if batch_data.empty or "Test Name" not in batch_data.columns:
         st.info("No test data available for this batch.")
         return
 
-    test_pairs = (
+    test_pairs = list(
         batch_data[["Category", "Test Name"]]
         .dropna(subset=["Test Name"])
         .drop_duplicates()
         .sort_values(["Category", "Test Name"])
         .itertuples(index=False, name=None)
     )
-    test_pairs = list(test_pairs)
-
-    if not test_pairs:
-        st.info("No test data available for this batch.")
-        return
 
     for category, test_name in test_pairs:
-        test_df = batch_data[
-            (batch_data["Category"] == category)
-            & (batch_data["Test Name"].astype(str) == str(test_name))
-        ].copy()
+        test_df = batch_data[(batch_data["Category"] == category) & (batch_data["Test Name"].astype(str) == str(test_name))].copy()
         if "Total" not in test_df.columns:
             continue
-            
         test_df["Total"] = pd.to_numeric(test_df["Total"], errors="coerce")
         test_df = test_df.dropna(subset=["Total"])
-
         if test_df.empty:
             continue
 
         top_3 = test_df.sort_values(by="Total", ascending=False).head(3)
-
         st.markdown(f"### 🏆 {category} — {test_name}")
-
         display_cols = ["Student Name"] + [s for s in allowed_subjects if s in top_3.columns]
         if "Rank" in top_3.columns:
             display_cols.append("Rank")
-
         top_display = top_3[display_cols].copy()
-
         for col in top_display.columns:
             if col != "Student Name":
-                top_display[col] = top_display[col].apply(
-                    lambda x: "N/A" if pd.isna(x) else str(int(round(x)))
-                )
-
-        st.dataframe(
-            top_display,
-            hide_index=True,
-            use_container_width=True,
-            selection_mode=None,
-        )
+                top_display[col] = top_display[col].apply(lambda x: "N/A" if pd.isna(x) else str(int(round(x))))
+        st.dataframe(top_display, hide_index=True, use_container_width=True, selection_mode=None)
         st.markdown("---")
 
 
-
 def render_student_search_view(df):
-    """Search students across all batches using Streamlit's searchable dropdown."""
-    st.markdown(
-        '<div class="section-header">🔎 Search Student Results</div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "Start typing the student's name. Suggestions appear immediately in the dropdown. "
-        "The batch is shown so students with the same name can be identified correctly."
-    )
+    st.markdown('<div class="section-header">🔎 Search Student Results</div>', unsafe_allow_html=True)
+    st.caption("Search students by name. The batch and User ID are shown so students with the same name remain distinct.")
 
-    # Build unique Student + Batch choices across the complete dataset.
     matches = (
         df[["Student Name", "Classroom", "Student Key"]]
         .dropna(subset=["Student Name", "Classroom", "Student Key"])
@@ -1091,33 +790,16 @@ def render_student_search_view(df):
         .sort_values(by=["Student Name", "Classroom"])
         .reset_index(drop=True)
     )
-
     if matches.empty:
         st.warning("No students found.")
         return
 
     student_options = []
     for _, row in matches.iterrows():
-        uid_text = str(row["Student Key"])
-        if uid_text.startswith("NAME:"):
-            uid_text = "No UID"
-        else:
-            uid_text = uid_text
-        student_options.append(
-            f"{row['Student Name']}  |  {row['Classroom']}  |  {uid_text}"
-        )
+        uid_text = "No UID" if str(row["Student Key"]).startswith("NAME:") else str(row["Student Key"])
+        student_options.append(f"{row['Student Name']}  |  {row['Classroom']}  |  {uid_text}")
 
-    # Streamlit selectbox has built-in type-to-search suggestions.
-    # Unlike the normal Student Data dropdown, this search box is intentionally
-    # searchable so suggestions appear while the user types.
-    selected_option = st.selectbox(
-        "🔎 Search Student Name:",
-        student_options,
-        index=None,
-        placeholder="Type student name to see suggestions...",
-        key="searched_student_option",
-    )
-
+    selected_option = st.selectbox("🔎 Search Student Name:", student_options, index=None, placeholder="Type student name to see suggestions...", key="searched_student_option")
     if selected_option is None:
         st.info("Start typing a student name above and select the required student.")
         return
@@ -1126,88 +808,62 @@ def render_student_search_view(df):
     selected_row = matches.iloc[selected_index]
     selected_student = selected_row["Student Name"]
     selected_batch = selected_row["Classroom"]
-    selected_student_key = selected_row["Student Key"]
+    selected_key = selected_row["Student Key"]
 
-    st.markdown(
-        f"**Selected Student:** {selected_student}  \n"
-        f"**Batch:** {selected_batch}"
-    )
+    st.markdown(f"**Selected Student:** {selected_student}  \n**Batch:** {selected_batch}")
 
-    student_data = df[
-        (df["Student Key"] == selected_student_key)
-        & (df["Classroom"] == selected_batch)
-    ].drop_duplicates(
-        subset=["Student Key", "Test Name", "Category"], keep="last"
-    )
-
+    student_data = df[(df["Student Key"] == selected_key) & (df["Classroom"] == selected_batch)].drop_duplicates(subset=["Student Key", "Test Name", "Category"], keep="last")
     if student_data.empty:
         st.warning("No test results found for the selected student.")
         return
 
     is_neet = "NEET" in str(selected_batch).upper()
-
     if is_neet:
         allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
-        categories = [
-            "Base Line Test",
-            "NEET RT",
-            "NEET CT",
-            "NEET Part Tests",
-            "NEET Practice Tests",
-            "NEET Tests",
-            "Unit Tests",
-            "Quarterly",
-            "Half Yearly",
-            "Pre Final 1",
-            "Pre Final 2",
-            "Pre Final 3",
-            "Part Tests",
-            "EAPCET",
-            "Other",
-        ]
+        categories = ["Base Line Test", "NEET RT", "NEET CT", "NEET Part Tests", "NEET Practice Tests", "NEET Tests", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Part Tests", "EAPCET", "Other"]
     else:
         allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
-        categories = [
-            "Base Line Test",
-            "RT Mains",
-            "CT Mains",
-            "RT Advanced",
-            "CT Advanced",
-            "Part Tests",
-            "EAPCET RT",
-            "EAPCET CT",
-            "EAPCET",
-            "Unit Tests",
-            "Quarterly",
-            "Half Yearly",
-            "Pre Final 1",
-            "Pre Final 2",
-            "Pre Final 3",
-            "Other",
-        ]
+        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Part Tests", "EAPCET RT", "EAPCET CT", "EAPCET", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Other"]
 
     for cat in categories:
         render_category_section(student_data, cat, allowed_subjects)
-
-    # Keep the same extra Student Data analysis in search mode.
     render_combination_subject_analysis(student_data, is_neet, scope_label="Student")
 
 
+def render_student_data_view(batch_data, selected_batch):
+    is_neet = "NEET" in selected_batch.upper()
+    students = sorted(batch_data["Student Name"].astype(str).unique())
+    if not students:
+        st.warning("No students found in this batch.")
+        return
+
+    selected_student = st.selectbox("Select Student Name:", students, index=0, key="student_name_dropdown")
+    student_data = batch_data[batch_data["Student Name"] == selected_student].copy().drop_duplicates(subset=["Student Key", "Test Name", "Category"], keep="last")
+
+    if is_neet:
+        allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
+        categories = ["Base Line Test", "NEET RT", "NEET CT", "NEET Part Tests", "NEET Practice Tests", "NEET Tests", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Part Tests", "EAPCET", "Other"]
+    else:
+        allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
+        categories = ["Base Line Test", "RT Mains", "CT Mains", "RT Advanced", "CT Advanced", "Part Tests", "EAPCET RT", "EAPCET CT", "EAPCET", "Unit Tests", "Quarterly", "Half Yearly", "Pre Final 1", "Pre Final 2", "Pre Final 3", "Other"]
+
+    for cat in categories:
+        render_category_section(student_data, cat, allowed_subjects)
+    st.markdown("---")
+    render_combination_subject_analysis(student_data, is_neet, scope_label="Student")
 
 
-
-
+# -----------------------------------------------------------------------------
+# MAIN
+# -----------------------------------------------------------------------------
 def main():
-    st.markdown(
-        '<div class="main-header">Student Performance Dashboard</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="main-header">Student Performance Dashboard</div>', unsafe_allow_html=True)
 
     with st.spinner("Loading data from Google Sheets..."):
         df = load_and_process_data()
 
     if df.empty:
-        st.warning("No data found matching the specified student user IDs or names.")
+        st.warning("No data found matching the supplied student roster.")
         return
 
     if "nav_mode" not in st.session_state:
@@ -1237,11 +893,15 @@ def main():
         render_student_search_view(df)
         return
 
-    batches = sorted(df["Classroom"].astype(str).unique())
+    batches = [b for b in [
+        "Sankalp-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-C",
+        "Dhristi-NEET-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-E",
+    ] if b in set(df["Classroom"].astype(str).unique())]
     selected_batch = st.selectbox("Select Batch / Classroom:", batches)
-
-    # Batch assignment is controlled exclusively by the supplied Student Name + User ID roster.
-    batch_data: pd.DataFrame = df[df["Classroom"] == selected_batch].copy()
+    batch_data = df[df["Classroom"] == selected_batch].copy()
     is_neet = "NEET" in selected_batch.upper()
 
     if st.session_state["nav_mode"] == "batch":
@@ -1249,73 +909,7 @@ def main():
     elif st.session_state["nav_mode"] == "topper":
         render_top_performers_view(batch_data, is_neet)
     else:
-        students = sorted(batch_data["Student Name"].astype(str).unique())
-        if students:
-            selected_student = st.selectbox(
-                "Select Student Name:",
-                students,
-                index=0,
-                key="student_name_dropdown",
-            )
-        else:
-            st.warning("No students found in this batch.")
-            return
-
-        mask = batch_data["Student Name"] == selected_student
-        student_data: pd.DataFrame = batch_data.loc[mask].drop_duplicates(
-            subset=["Student Key", "Test Name", "Category"], keep="last"
-        )
-
-        if is_neet:
-            allowed_subjects = ["Physics", "Chemistry", "Biology", "Total"]
-            categories = [
-                "Base Line Test",
-                "NEET RT",
-                "NEET CT",
-                "NEET Part Tests",
-                "NEET Practice Tests",
-                "NEET Tests",
-                "Unit Tests",
-                "Quarterly",
-                "Half Yearly",
-                "Pre Final 1",
-                "Pre Final 2",
-                "Pre Final 3",
-                "Part Tests",
-                "EAPCET",
-                "Other",
-            ]
-        else:
-            allowed_subjects = ["Physics", "Chemistry", "Maths", "Total"]
-            categories = [
-                "Base Line Test",
-                "RT Mains",
-                "CT Mains",
-                "RT Advanced",
-                "CT Advanced",
-                "Part Tests",
-                "EAPCET RT",
-                "EAPCET CT",
-                "EAPCET",
-                "Unit Tests",
-                "Quarterly",
-                "Half Yearly",
-                "Pre Final 1",
-                "Pre Final 2",
-                "Pre Final 3",
-                "Other",
-            ]
-
-        for cat in categories:
-            render_category_section(student_data, cat, allowed_subjects)
-
-        # EXTRA ONLY: appended once, after ALL Student Data category sections.
-        st.markdown("---")
-        render_combination_subject_analysis(
-            student_data,
-            is_neet,
-            scope_label="Student",
-        )
+        render_student_data_view(batch_data, selected_batch)
 
 
 if __name__ == "__main__":
