@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -389,9 +390,9 @@ def load_and_process_data():
         },
     }
 
-    id_to_batch = {}
-    id_to_proper_name = {}
-    name_to_batch = {}
+    id_to_batches = {}
+    id_to_proper_names = {}
+    name_to_batches = {}
     name_to_proper_name = {}
 
     ordered_batches = [
@@ -406,11 +407,19 @@ def load_and_process_data():
         if batch in student_roster:
             students = student_roster[batch]
             for uid, proper_name in students.items():
-                id_to_batch[uid] = batch
-                id_to_proper_name[uid] = proper_name
+                id_to_batches.setdefault(uid, []).append(batch)
+                id_to_proper_names.setdefault(uid, []).append(proper_name)
                 clean_name_lower = proper_name.strip().lower()
-                name_to_batch[clean_name_lower] = batch
-                name_to_proper_name[clean_name_lower] = proper_name
+                name_to_batches.setdefault(clean_name_lower, []).append(batch)
+                name_to_proper_name.setdefault(clean_name_lower, []).append(proper_name)
+
+    # Only use a UID/name mapping when it belongs to exactly one batch.
+    # This prevents a student appearing in two rosters from being silently
+    # reassigned to the last batch encountered.
+    unique_id_to_batch = {uid: batches[0] for uid, batches in id_to_batches.items() if len(set(batches)) == 1}
+    unique_id_to_proper_name = {uid: id_to_proper_names[uid][0] for uid in unique_id_to_batch}
+    unique_name_to_batch = {name: batches[0] for name, batches in name_to_batches.items() if len(set(batches)) == 1}
+    unique_name_to_proper_name = {name: name_to_proper_name[name][0] for name in unique_name_to_batch}
 
     global_counter = 0
 
@@ -453,12 +462,12 @@ def load_and_process_data():
                 assigned_batch = None
                 final_clean_name = sheet_name_val
 
-                if uid_val and uid_val in id_to_batch:
-                    assigned_batch = id_to_batch[uid_val]
-                    final_clean_name = id_to_proper_name[uid_val]
-                elif name_lower in name_to_batch:
-                    assigned_batch = name_to_batch[name_lower]
-                    final_clean_name = name_to_proper_name[name_lower]
+                if uid_val and uid_val in unique_id_to_batch:
+                    assigned_batch = unique_id_to_batch[uid_val]
+                    final_clean_name = unique_id_to_proper_name[uid_val]
+                elif name_lower in unique_name_to_batch:
+                    assigned_batch = unique_name_to_batch[name_lower]
+                    final_clean_name = unique_name_to_proper_name[name_lower]
 
                 if assigned_batch:
                     test_str_upper = str(test_row["Test Name"]).upper()
@@ -479,6 +488,20 @@ def load_and_process_data():
                 continue
 
             processed_subset = pd.DataFrame(valid_rows)
+
+            def detect_class_level(test_name, sheet_name):
+                """Detect explicit Class 11/12 markers from source test/sheet names.
+                Returns 11, 12, or None when the source does not state a class.
+                """
+                combined = f"{sheet_name} {test_name}".upper()
+                # Explicit school-style markers first.
+                class12_patterns = [r"\\bCLASS\\s*12\\b", r"\\b12TH\\b", r"\\bXII\\b", r"\\bINTER\\s*2\\b", r"\\bSECOND\\s+YEAR\\b", r"\\b2ND\\s+YEAR\\b"]
+                class11_patterns = [r"\\bCLASS\\s*11\\b", r"\\b11TH\\b", r"\\bXI\\b", r"\\bINTER\\s*1\\b", r"\\bFIRST\\s+YEAR\\b", r"\\b1ST\\s+YEAR\\b"]
+                if any(re.search(pattern, combined) for pattern in class12_patterns):
+                    return 12
+                if any(re.search(pattern, combined) for pattern in class11_patterns):
+                    return 11
+                return None
 
             def categorize_test(tr):
                 name_upper = str(tr["Test Name"]).upper()
@@ -538,6 +561,9 @@ def load_and_process_data():
 
             processed_subset["Category"] = processed_subset.apply(
                 categorize_test, axis=1
+            )
+            processed_subset["Detected Class"] = processed_subset.apply(
+                lambda r: detect_class_level(r["Test Name"], sheet_name), axis=1
             )
 
             for subj in ["Physics", "Chemistry", "Maths", "Biology", "Total"]:
@@ -697,9 +723,8 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
             "Biology": "#E45756",
         }
 
-        c1, c2 = st.columns(2)
+        with st.container():
 
-        with c1:
             fig_bar = px.bar(
                 subject_df,
                 x="Subject",
@@ -756,43 +781,6 @@ def render_combination_subject_analysis(data, is_neet, scope_label="Student"):
                 theme=None,
             )
 
-        with c2:
-            pie_df = subject_df[subject_df["Average Marks"] > 0].copy()
-            if not pie_df.empty:
-                fig_pie = px.pie(
-                    pie_df,
-                    names="Subject",
-                    values="Average Marks",
-                    color="Subject",
-                    color_discrete_map=subject_colors,
-                    title=f"{scope_label} – {group_name} – Subject Strength",
-                    hole=0.25,
-                )
-                fig_pie.update_traces(
-                    textposition="inside",
-                    textinfo="percent+label",
-                    textfont=dict(color="#1f2937"),
-                )
-                fig_pie.update_layout(
-                    height=360,
-                    margin=dict(l=20, r=20, t=60, b=20),
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(255,255,255,0.20)",
-                    font=dict(color="#1f2937"),
-                    title_font=dict(color="#1f2937", size=16),
-                    legend=dict(font=dict(color="#1f2937")),
-                )
-                st.plotly_chart(
-                    fig_pie,
-                    use_container_width=True,
-                    config={
-                        "displayModeBar": False,
-                        "staticPlot": True,
-                        "scrollZoom": False,
-                        "doubleClick": False,
-                    },
-                    theme=None,
-                )
         st.markdown("---")
 def render_category_section(student_df, category_name, allowed_subjects):
     cat_df = student_df[student_df["Category"] == category_name].copy()
@@ -932,9 +920,8 @@ def render_batch_analysis_view(batch_data, is_neet):
             continue
 
         st.markdown(f"### {cat}")
-        c1, c2 = st.columns(2)
+        with st.container():
 
-        with c1:
             st.markdown(f"<div style='text-align: center; font-weight: bold; color: #385b96;'>{cat} Subject Trend</div>", unsafe_allow_html=True)
             melted_df = grouped.melt(id_vars=["Test Name"], value_vars=[s for s in subject_cols if s in grouped.columns], var_name="Subject", value_name="Average Marks")
             fig_subj = px.line(melted_df, x="Test Name", y="Average Marks", color="Subject", markers=True)
@@ -1207,7 +1194,14 @@ def main():
     batches = sorted(df["Classroom"].astype(str).unique())
     selected_batch = st.selectbox("Select Batch / Classroom:", batches)
 
-    batch_data: pd.DataFrame = df[df["Classroom"] == selected_batch]
+    # Class filter prevents explicit Class-12 tests from entering a Class-11 view
+    # (and vice versa). Tests without an explicit class marker remain available.
+    class_options = ["All", "Class 11", "Class 12"]
+    selected_class = st.selectbox("Select Class:", class_options, key="class_level_filter")
+    batch_data: pd.DataFrame = df[df["Classroom"] == selected_batch].copy()
+    if "Detected Class" in batch_data.columns and selected_class != "All":
+        target_class = 11 if selected_class == "Class 11" else 12
+        batch_data = batch_data[batch_data["Detected Class"].isna() | (batch_data["Detected Class"] == target_class)]
     is_neet = "NEET" in selected_batch.upper()
 
     if st.session_state["nav_mode"] == "batch":
