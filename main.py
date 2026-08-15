@@ -39,13 +39,13 @@ exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
 
 # -----------------------------------------------------------------------------
-# MOTIVATION: GOOGLE-STYLE TYPE-AHEAD SEARCH
+# MOTIVATION: TRUE TYPE-AHEAD SEARCH
 # -----------------------------------------------------------------------------
 def render_motivation():
     st.markdown("## 💡 Motivation & Study Help")
-    st.caption("Search like Google: open the box, type a word or phrase, and matching questions appear as suggestions.")
+    st.caption("Type in the search box. Matching questions will appear in the box as suggestions.")
 
-    # Keep the search list clean and unique.
+    # Build one clean list of unique questions.
     question_list = []
     seen = set()
     for item in MOTIVATION:
@@ -54,26 +54,27 @@ def render_motivation():
             seen.add(q.lower())
             question_list.append(q)
 
-    # Native Streamlit selectbox provides Google-like type-ahead filtering:
-    # tap the box -> suggestions, type -> suggestions narrow immediately.
-    suggestions = ["Search motivation questions..."] + question_list
-    selected = st.selectbox(
-        "Search motivation",
-        suggestions,
-        index=0,
+    # IMPORTANT: this is the actual searchable Streamlit select box.
+    # Do NOT add a fake first option or separate suggestion buttons.
+    # Streamlit filters the options inside this same box as the user types.
+    selected_question = st.selectbox(
+        "Search motivation questions",
+        question_list,
+        index=None,
+        placeholder="🔍 Start typing — e.g. lazy, focus, sleep, marks...",
         key="motivation_google_search",
         label_visibility="collapsed",
     )
 
-    # Make the search box visually closer to a Google-style search field.
+    # Google-like visual styling for the search box.
     st.markdown(
         """
         <style>
         div[data-testid="stSelectbox"] > div > div {
             border-radius: 28px !important;
-            min-height: 48px !important;
+            min-height: 50px !important;
             border: 1px solid #d9d9d9 !important;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.12) !important;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.14) !important;
             background: #ffffff !important;
         }
         div[data-testid="stSelectbox"] input {
@@ -88,40 +89,19 @@ def render_motivation():
         unsafe_allow_html=True,
     )
 
-    if selected == suggestions[0]:
-        st.markdown("### 🔎 Suggested searches")
-        # Useful suggestions shown immediately when the box is opened.
-        starter_topics = [
-            "How can I study when I feel lazy?",
-            "How can I concentrate while studying?",
-            "How can I stop procrastinating?",
-            "How can I improve my marks?",
-            "How can I complete my study backlog?",
-            "How can I reduce my phone usage?",
-            "How can I improve my memory?",
-            "How can I prepare for a test?",
-        ]
-        cols = st.columns(2)
-        for i, question in enumerate(starter_topics):
-            with cols[i % 2]:
-                if st.button(question, key=f"motivation_suggestion_{i}", use_container_width=True):
-                    st.session_state["motivation_selected_question"] = question
-                    st.rerun()
-        selected_question = st.session_state.get("motivation_selected_question")
-    else:
-        selected_question = selected
-        st.session_state["motivation_selected_question"] = selected
-
+    # Nothing is shown until the student actually selects a suggestion.
     if not selected_question:
         return
 
-    # Find the selected question and show its guidance immediately.
     selected_item = next(
-        (item for item in MOTIVATION if str(item.get("Question", "")).strip() == selected_question),
+        (
+            item for item in MOTIVATION
+            if str(item.get("Question", "")).strip() == selected_question
+        ),
         None,
     )
+
     if selected_item is None:
-        st.info("Select one of the suggested questions to see guidance.")
         return
 
     st.markdown("### 💭 Your question")
