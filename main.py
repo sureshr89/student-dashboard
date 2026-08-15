@@ -3,7 +3,8 @@ import urllib.request
 import pandas as pd
 import streamlit as st
 
-# Keep the known-good dashboard as the base and apply only the requested UI fixes.
+# Keep the known-good dashboard as the base. Only the requested Concepts and
+# Motivation/Student Search layers are changed below.
 SRC = "https://raw.githubusercontent.com/sureshr89/student-dashboard/5283697e96cdb80eb8c62311f0d7e9c96eb99150/main.py"
 
 try:
@@ -28,7 +29,7 @@ source = re.sub(
     source,
     count=1,
 )
-# Stop the base source from running main before our overrides are defined.
+# Prevent the base source from running main() before our overrides are ready.
 source = re.sub(r"\nmain\(\)\s*$", "\n", source, count=1)
 
 if removed_concepts != 1:
@@ -37,15 +38,27 @@ if removed_concepts != 1:
 
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
+# Load the expanded, student-safe library. This adds 800 total questions,
+# including 500+ new questions covering JEE, NEET, Boards, Classes 11-12,
+# hostel/day-scholar routines and Physics/Chemistry/Maths/Biology/Botany/
+# Zoology/English/Sanskrit.
+try:
+    from motivation_library import MOTIVATION as EXPANDED_MOTIVATION, advice as practical_advice
+except Exception as e:
+    st.error(f"Unable to load Motivation library: {e}")
+    st.stop()
+
+MOTIVATION = EXPANDED_MOTIVATION
+advice = practical_advice
+
 
 # -----------------------------------------------------------------------------
-# MOTIVATION: TRUE TYPE-AHEAD SEARCH
+# MOTIVATION: GOOGLE-STYLE TYPE-AHEAD SEARCH
 # -----------------------------------------------------------------------------
 def render_motivation():
     st.markdown("## 💡 Motivation & Study Help")
-    st.caption("Type in the search box. Matching questions will appear in the box as suggestions.")
+    st.caption("Type in the search box. Matching student questions appear inside the box as suggestions.")
 
-    # Build one clean list of unique questions.
     question_list = []
     seen = set()
     for item in MOTIVATION:
@@ -54,19 +67,17 @@ def render_motivation():
             seen.add(q.lower())
             question_list.append(q)
 
-    # IMPORTANT: this is the actual searchable Streamlit select box.
-    # Do NOT add a fake first option or separate suggestion buttons.
-    # Streamlit filters the options inside this same box as the user types.
+    # One search box only. Streamlit's selectbox filters these options while
+    # the student types, so the suggestions stay inside the search control.
     selected_question = st.selectbox(
         "Search motivation questions",
         question_list,
         index=None,
-        placeholder="🔍 Start typing — e.g. lazy, focus, sleep, marks...",
-        key="motivation_google_search",
+        placeholder="🔍 Start typing — e.g. lazy, focus, JEE, NEET, Physics, hostel...",
+        key="motivation_google_search_v2",
         label_visibility="collapsed",
     )
 
-    # Google-like visual styling for the search box.
     st.markdown(
         """
         <style>
@@ -89,25 +100,20 @@ def render_motivation():
         unsafe_allow_html=True,
     )
 
-    # Nothing is shown until the student actually selects a suggestion.
     if not selected_question:
         return
 
     selected_item = next(
-        (
-            item for item in MOTIVATION
-            if str(item.get("Question", "")).strip() == selected_question
-        ),
+        (item for item in MOTIVATION if str(item.get("Question", "")).strip() == selected_question),
         None,
     )
-
     if selected_item is None:
         return
 
     st.markdown("### 💭 Your question")
     st.markdown(f"**{selected_question}**")
-    st.markdown("### 💡 Simple guidance")
-    st.success(advice(selected_question))
+    st.markdown("### 💡 Practical guidance")
+    st.info(advice(selected_question))
     st.caption(f"Topic: {selected_item.get('Category', 'Study Help')}")
 
 
@@ -195,5 +201,5 @@ def render_student_search_view(df):
     render_combination_subject_analysis(student_data, is_neet, scope_label="Student")
 
 
-# Run only after the corrected functions have been defined.
+# Run only after all requested overrides are defined.
 main()
