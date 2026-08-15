@@ -16,30 +16,18 @@ TOPICS = [
     "Biology NCERT", "Botany diagrams and terms", "Zoology concepts", "English grammar and writing",
     "English reading and vocabulary", "Sanskrit grammar and translation", "Sanskrit vocabulary", "exam-day strategy"
 ]
-
 FORMS = [
-    "How can I improve {topic} for {context}?",
-    "What should I do if I struggle with {topic} during {context}?",
-    "How can I manage {topic} when I have school and coaching?",
-    "How can I handle {topic} when I am staying in a hostel?",
-    "How can I handle {topic} as a day scholar?",
-    "How can I make a simple daily plan for {topic}?",
-    "How can I stop wasting time on {topic}?",
-    "How can I become consistent with {topic}?",
-    "What is a practical way to practise {topic} every day?",
-    "How can I improve {topic} before my next test?",
-    "How can I improve {topic} without studying late every night?",
-    "What should I do when {topic} feels difficult?",
-    "How can I track my progress in {topic}?",
-    "How can I balance {topic} with other subjects?",
-    "How can I recover if I have fallen behind in {topic}?",
-    "How can I avoid common mistakes in {topic}?",
-    "How can I use my test results to improve {topic}?",
-    "How can I make {topic} easier to revise?",
-    "What can I do today to make progress in {topic}?",
-    "How can I stay calm and practical while working on {topic}?",
+    "How can I improve {topic} for {context}?", "What should I do if I struggle with {topic} during {context}?",
+    "How can I manage {topic} when I have school and coaching?", "How can I handle {topic} when I am staying in a hostel?",
+    "How can I handle {topic} as a day scholar?", "How can I make a simple daily plan for {topic}?",
+    "How can I stop wasting time on {topic}?", "How can I become consistent with {topic}?",
+    "What is a practical way to practise {topic} every day?", "How can I improve {topic} before my next test?",
+    "How can I improve {topic} without studying late every night?", "What should I do when {topic} feels difficult?",
+    "How can I track my progress in {topic}?", "How can I balance {topic} with other subjects?",
+    "How can I recover if I have fallen behind in {topic}?", "How can I avoid common mistakes in {topic}?",
+    "How can I use my test results to improve {topic}?", "How can I make {topic} easier to revise?",
+    "What can I do today to make progress in {topic}?", "How can I stay calm and practical while working on {topic}?",
 ]
-
 
 def build_questions():
     out, seen = [], set()
@@ -53,12 +41,11 @@ def build_questions():
                 return out
     return out
 
-
 MOTIVATION = build_questions()
 
 
 def practical_advice(question):
-    """Return a practical, student-safe answer targeted to roughly 200-300 words."""
+    """Return a simple, practical, student-safe bullet guide of about 150-200 words."""
     q = question.lower()
     subject = next((s for s in SUBJECTS if s.lower() in q), None)
     hostel = "hostel" in q
@@ -66,65 +53,97 @@ def practical_advice(question):
     exam = any(x in q for x in ("jee", "neet", "board", "exam", "test"))
 
     if any(x in q for x in ("phone", "social", "distraction")):
-        focus = "controlling phone and other distractions"
-        actions = "Keep the phone outside your immediate study reach, turn off non-essential notifications and use a fixed check window during breaks. If it is needed for a lecture, open only that material and close other apps."
+        title = "Control distractions"
+        steps = [
+            "Keep the phone outside your study reach and switch off unnecessary notifications.",
+            "If you need the phone for a lecture, open only that app and close everything else.",
+            "Use a fixed 10-minute phone-check window during a planned break.",
+            "Study with one book or one question set open at a time."
+        ]
     elif "backlog" in q or "fallen behind" in q:
-        focus = "recovering a study backlog"
-        actions = "List pending chapters, mark prerequisites and choose one small backlog block each day while continuing current classwork. Do not try to clear everything in one night."
+        title = "Clear the backlog without panic"
+        steps = [
+            "Write every pending chapter on one page and mark the chapters needed for current classes.",
+            "Choose one small backlog task each day—do not try to finish everything in one night.",
+            "Use active questions after learning a chapter instead of only watching lectures.",
+            "Continue current school/coaching work while gradually reducing the backlog."
+        ]
     elif any(x in q for x in ("sleep", "waking", "hostel")):
-        focus = "building a sustainable routine"
-        actions = "Keep a regular sleep and wake window, prepare books before sleeping and make the first study task small. In a hostel, use a library or quiet study area when the room is noisy; as a day scholar, use travel time only for light review."
-    elif any(x in q for x in ("low marks", "marks", "test", "mock", "exam")):
-        focus = "improving test performance"
-        actions = "After every test, classify mistakes as concept, calculation, reading, time-management or guessing errors. Pick the two biggest categories and practise them before the next test."
+        title = "Build a routine you can repeat"
+        steps = [
+            "Keep a reasonably fixed sleep and wake time instead of changing it every day.",
+            "Prepare books and the first task before sleeping so starting is easy.",
+            "In a hostel, use a library or quiet study area when the room is noisy.",
+            "As a day scholar, protect a fixed study block after reaching home."
+        ]
+    elif any(x in q for x in ("marks", "test", "mock", "exam")):
+        title = "Turn marks into an improvement plan"
+        steps = [
+            "After the test, classify each mistake: concept, calculation, reading, time or guessing.",
+            "Pick the two biggest mistake types and practise those first.",
+            "Redo wrong questions without looking at the solution, then compare your method.",
+            "Keep an error notebook and check the same mistakes again before the next test."
+        ]
     elif any(x in q for x in ("memory", "recall", "revision")):
-        focus = "active recall and revision"
-        actions = "Close the book and reproduce formulas, definitions, diagrams or solution steps from memory. Check immediately, correct gaps and revisit after a spaced interval instead of only rereading."
+        title = "Make revision active"
+        steps = [
+            "Close the book and recall formulas, definitions, diagrams or steps from memory.",
+            "Check immediately and mark only the points you forgot.",
+            "Revisit those points after a gap instead of rereading the whole chapter.",
+            "Use short mixed question sets to check whether you can actually apply the idea."
+        ]
     elif any(x in q for x in ("read", "speed", "english", "sanskrit")):
-        focus = "efficient reading and language learning"
-        actions = "Preview headings, read for meaning, underline only essential information and then explain the main idea without looking. For language subjects, add a short daily vocabulary or grammar block."
+        title = "Improve reading and language practice"
+        steps = [
+            "Preview headings first, then read for meaning rather than trying to memorise every line.",
+            "After a section, close the book and explain the main idea in your own words.",
+            "For English or Sanskrit, keep a small daily vocabulary and grammar practice block.",
+            "Use writing practice regularly for board-style answers."
+        ]
     elif subject:
-        focus = f"improving {subject}"
-        actions = f"For {subject}, select a small concept set, learn the core idea, solve basic questions and then move to mixed exam-level questions. Keep a doubt list and analyse mistakes."
+        title = f"Practise {subject} effectively"
+        steps = [
+            f"Choose one small {subject} concept and understand the basic idea before solving difficult questions.",
+            "Solve a few basic questions first, then move to mixed JEE/NEET/board-level questions.",
+            "Write down every important doubt instead of repeatedly rereading the same page.",
+            "Keep an error notebook and revisit missed questions after a few days."
+        ]
     elif any(x in q for x in ("motivation", "procrast", "lazy")):
-        focus = "starting when motivation is low"
-        actions = "Choose a task that can be completed in 10 minutes, such as five questions, one example or one page of revision. Put the phone away, start a timer and begin before deciding whether you feel motivated."
+        title = "Start before waiting for motivation"
+        steps = [
+            "Choose one task that takes about 10 minutes: five questions, one example or one page.",
+            "Put the phone away, start a timer and begin immediately.",
+            "After 10 minutes, continue if you can; otherwise take a short planned break.",
+            "Repeat small study blocks daily—the goal is consistency, not a perfect day."
+        ]
     else:
-        focus = "steady academic progress"
-        actions = "Choose one measurable target, divide it into small tasks, work in a focused block, take a planned short break and record what was completed."
+        title = "Make steady progress"
+        steps = [
+            "Choose one measurable target for the next study block.",
+            "Work on only that task and remove obvious distractions.",
+            "Take a short planned break, then start the next block.",
+            "Record what you completed and choose tomorrow's first task before stopping."
+        ]
 
+    context = []
     if hostel:
-        context_line = "In a hostel, protect one quiet study block in the library or designated study area and tell roommates when you need uninterrupted time. "
+        context.append("For hostel students: protect one quiet library/study-room block and tell roommates when you need uninterrupted time.")
     elif day:
-        context_line = "As a day scholar, include travel and home responsibilities in the plan and protect a fixed study block after returning home. "
+        context.append("For day scholars: include travel and home responsibilities when planning your realistic study time.")
     else:
-        context_line = "Build the routine around your real school, coaching, travel and family timetable rather than copying another student's schedule. "
+        context.append("Fit the plan around your real school, coaching, travel and family timetable rather than copying another student's routine.")
+    if exam:
+        context.append("For JEE/NEET/boards: keep current lessons moving, reserve a smaller block for backlog and revision, and avoid sacrificing regular sleep.")
+    if subject:
+        context.append(f"For {subject}: spend more time analysing wrong questions than simply counting how many questions you attempted.")
 
-    exam_line = (
-        "For JEE/NEET and boards, keep current lessons moving while reserving a smaller block for backlog and revision; do not sacrifice regular sleep for a temporary burst of study. "
-        if exam else
-        "When an exam approaches, gradually increase timed practice and revision while still fixing genuine concept gaps. "
+    bullets = "\n".join(f"- {x}" for x in steps)
+    ending = (
+        "\n\n**Simple daily check:** Write down (1) what I completed, (2) what I got wrong, and (3) the first task for tomorrow. "
+        "If you miss a day, simply restart with the next planned block instead of trying to compensate with an exhausting session. "
+        "Small repeated actions are more useful than waiting for a perfect mood or a perfect timetable."
     )
-    subject_line = (
-        f"For {subject}, keep an error notebook showing why each question was missed and revisit those errors after a few days. "
-        if subject else
-        "Keep a small error-and-doubt notebook so your effort is guided by actual gaps rather than hours spent sitting with a book. "
-    )
-
-    return (
-        f"The practical goal is {focus}. You do not need a perfect routine; you need one you can repeat. "
-        "Start by writing one measurable target for the next study block instead of a vague target such as ‘study more’. "
-        f"{actions} {context_line}{exam_line}{subject_line}"
-        "Use a simple cycle: plan for a few minutes, study with one task only, check your work and record the result. "
-        "If you miss a day, restart with the next planned block instead of trying to compensate with an exhausting session. "
-        "For a difficult chapter, write the exact doubt and ask a teacher or mentor rather than repeatedly rereading it. "
-        "After a test, spend time analysing mistakes and convert the two most important mistakes into practice tasks. "
-        "For motivation, remember that consistency is built by repeated small actions, not by waiting to feel inspired. "
-        "A useful daily structure is one block for current lessons, one block for questions and a short revision block. "
-        "At the end of the day, record what you completed, what remains and the first task for tomorrow. "
-        "This makes the next start easier and prevents the plan from becoming overwhelming. "
-        "If prolonged stress, tiredness or pressure is making normal study difficult, speak to a parent, teacher, mentor or another trusted adult and ask for practical support."
-    )
+    return f"### {title}\n\n{bullets}\n\n" + " ".join(context) + ending
 
 
 def advice(question):
