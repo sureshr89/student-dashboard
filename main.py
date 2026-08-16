@@ -55,14 +55,16 @@ if _motivation_df.empty:
 
 # -----------------------------------------------------------------------------
 # CLEARABLE SEARCH BOXES
-# The X is a real Streamlit button next to the search field, so it works on
-# desktop and mobile instead of relying on fragile browser-side CSS/JavaScript.
+# Uses a Streamlit callback to clear the widget state safely. Do NOT assign
+# st.session_state[key] after the widget has already been created; that causes
+# StreamlitValueAssignmentNotAllowedError on the next rerun.
 # -----------------------------------------------------------------------------
+def _clear_search_value(widget_key):
+    st.session_state[widget_key] = None
+
+
 def _clearable_selectbox(label, options, *, key, placeholder):
     clear_key = f"{key}_clear_button"
-
-    if clear_key not in st.session_state:
-        st.session_state[clear_key] = False
 
     left, right = st.columns([0.91, 0.09], gap="small", vertical_alignment="bottom")
     with left:
@@ -76,18 +78,18 @@ def _clearable_selectbox(label, options, *, key, placeholder):
         )
     with right:
         st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
-        clear_pressed = st.button("✕", key=clear_key, help="Clear search", use_container_width=True)
-
-    if clear_pressed:
-        # Reset the widget before the next rerun. Streamlit reruns after a
-        # button click, so the search box comes back empty immediately.
-        st.session_state[key] = None
-        st.rerun()
+        st.button(
+            "✕",
+            key=clear_key,
+            help="Clear search",
+            use_container_width=True,
+            on_click=_clear_search_value,
+            args=(key,),
+        )
 
     st.markdown(
         """
         <style>
-        /* Keep the search box and clear button visually compact on mobile. */
         div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
             min-height: 44px !important;
             height: 44px !important;
