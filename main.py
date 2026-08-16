@@ -27,7 +27,7 @@ if removed_concepts != 1:
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
 # -----------------------------------------------------------------------------
-# MOTIVATION: VERIFIED QUESTION-SPECIFIC LIBRARY
+# MOTIVATION: QUESTION-SPECIFIC PRACTICAL ANSWERS
 # -----------------------------------------------------------------------------
 try:
     from motivation_library import MOTIVATION, practical_advice, advice
@@ -54,77 +54,48 @@ if _motivation_df.empty:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# CLEARABLE GOOGLE-STYLE SEARCH BOX
+# CLEARABLE SEARCH BOXES
+# The X is a real Streamlit button next to the search field, so it works on
+# desktop and mobile instead of relying on fragile browser-side CSS/JavaScript.
 # -----------------------------------------------------------------------------
 def _clearable_selectbox(label, options, *, key, placeholder):
-    """Selectbox with a visible X that clears the current search/selection."""
-    state_key = key
-    clear_key = f"{key}_clear"
-    st.markdown(
-        """
-        <style>
-        /* The X is visually overlaid at the right edge of the rounded search box. */
-        div[data-testid="stHorizontalBlock"]:has(.motivation-clear-anchor) > div:nth-child(2) button {
-            width: 44px !important;
-            min-width: 44px !important;
-            height: 44px !important;
-            min-height: 44px !important;
-            padding: 0 !important;
-            border: 0 !important;
-            border-radius: 50% !important;
-            background: transparent !important;
-            color: #5f6368 !important;
-            font-size: 22px !important;
-            font-weight: 500 !important;
-            box-shadow: none !important;
-            margin-left: -50px !important;
-            margin-top: 3px !important;
-            position: relative !important;
-            z-index: 20 !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.motivation-clear-anchor) > div:nth-child(2) button:hover {
-            background: #f1f3f4 !important;
-            color: #202124 !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(.motivation-clear-anchor) > div:nth-child(2) button p {
-            font-size: 22px !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    clear_key = f"{key}_clear_button"
 
-    left, right = st.columns([20, 1], gap="small")
-    with right:
-        clear_pressed = st.button("✕", key=clear_key, help="Clear search")
-    if clear_pressed:
-        st.session_state[state_key] = None
+    if clear_key not in st.session_state:
+        st.session_state[clear_key] = False
+
+    left, right = st.columns([0.91, 0.09], gap="small", vertical_alignment="bottom")
     with left:
-        st.markdown('<span class="motivation-clear-anchor"></span>', unsafe_allow_html=True)
         value = st.selectbox(
             label,
             options,
             index=None,
             placeholder=placeholder,
-            key=state_key,
+            key=key,
             label_visibility="collapsed",
         )
-    return value
+    with right:
+        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
+        clear_pressed = st.button("✕", key=clear_key, help="Clear search", use_container_width=True)
 
-def render_motivation():
-    st.markdown("## 💡 Motivation & Study Help")
-    st.caption("Start typing — matching questions appear as suggestions in the search box.")
-
-    selected_question = _clearable_selectbox(
-        "Search motivation questions",
-        _motivation_df["Question"].tolist(),
-        key="motivation_google_search_fixed",
-        placeholder="🔍 Type here — e.g. lazy, focus, JEE, NEET, Physics, hostel...",
-    )
+    if clear_pressed:
+        # Reset the widget before the next rerun. Streamlit reruns after a
+        # button click, so the search box comes back empty immediately.
+        st.session_state[key] = None
+        st.rerun()
 
     st.markdown(
         """
         <style>
+        /* Keep the search box and clear button visually compact on mobile. */
+        div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
+            min-height: 44px !important;
+            height: 44px !important;
+            padding: 0 !important;
+            border-radius: 22px !important;
+            font-size: 20px !important;
+            font-weight: 600 !important;
+        }
         div[data-testid="stSelectbox"] > div > div {
             border-radius: 28px !important;
             min-height: 50px !important;
@@ -139,6 +110,19 @@ def render_motivation():
         </style>
         """,
         unsafe_allow_html=True,
+    )
+    return value
+
+
+def render_motivation():
+    st.markdown("## 💡 Motivation & Study Help")
+    st.caption("Start typing — matching questions appear as suggestions. Tap ✕ to clear the search.")
+
+    selected_question = _clearable_selectbox(
+        "Search motivation questions",
+        _motivation_df["Question"].tolist(),
+        key="motivation_google_search_fixed",
+        placeholder="🔍 Type here — e.g. lazy, focus, JEE, NEET, Physics, hostel...",
     )
 
     if selected_question is None:
