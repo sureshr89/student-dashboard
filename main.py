@@ -11,18 +11,29 @@ except Exception as e:
     st.error(f"Unable to load dashboard source: {e}")
     st.stop()
 
+# Remove the old Concepts section from the dynamically loaded dashboard.
 source, removed_concepts = re.subn(
     r"\n# ={20,}\n# CONCEPTS.*?\n# ={20,}\n# TOP 5 BEST SUBJECT-WISE RANKS",
     "\n# ============================================================\n# TOP 5 BEST SUBJECT-WISE RANKS",
-    source, count=1, flags=re.S,
+    source,
+    count=1,
+    flags=re.S,
 )
 source = source.replace("('📚 Concepts', 'concepts')", "")
-source = re.sub(r"\n\s*if mode == ['\"]concepts['\"]:\n\s*render_concepts\(\)\n\s*return\n", "\n", source, count=1)
+source = re.sub(
+    r"\n\s*if mode == ['\"]concepts['\"]:\n\s*render_concepts\(\)\n\s*return\n",
+    "\n",
+    source,
+    count=1,
+)
 source = re.sub(r"\nmain\(\)\s*$", "\n", source, count=1)
 
 if removed_concepts != 1:
-    st.error("Dashboard safety check failed while removing Concepts.")
+    st.error("Dashboard safety check failed while removing the old Concepts module.")
     st.stop()
+
+# Make sure the dynamically loaded source cannot depend on the removed module.
+source = source.replace("load_concepts.clear()", "")
 
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
@@ -55,9 +66,8 @@ if _motivation_df.empty:
 
 # -----------------------------------------------------------------------------
 # CLEARABLE SEARCH BOXES
-# Uses a Streamlit callback to clear the widget state safely. Do NOT assign
-# st.session_state[key] after the widget has already been created; that causes
-# StreamlitValueAssignmentNotAllowedError on the next rerun.
+# The callback changes widget state before the next rerun, avoiding
+# StreamlitValueAssignmentNotAllowedError.
 # -----------------------------------------------------------------------------
 def _clear_search_value(widget_key):
     st.session_state[widget_key] = None
@@ -143,7 +153,7 @@ def render_motivation():
     st.caption(f"Topic: {category}")
 
 # -----------------------------------------------------------------------------
-# STUDENT SEARCH: KEEP GREETING + TOP 5 WORKING, WITH CLEAR X
+# STUDENT SEARCH
 # -----------------------------------------------------------------------------
 def render_student_search_view(df):
     st.markdown('<div class="section-header">🔎 Search Student Results</div>', unsafe_allow_html=True)
@@ -153,7 +163,13 @@ def render_student_search_view(df):
     if missing:
         st.error(f"Student Search data is missing: {', '.join(missing)}")
         return
-    matches = (df[required].dropna(subset=required).drop_duplicates(subset=["Student Key", "Classroom"]).sort_values(["Student Name", "Classroom"]).reset_index(drop=True))
+    matches = (
+        df[required]
+        .dropna(subset=required)
+        .drop_duplicates(subset=["Student Key", "Classroom"])
+        .sort_values(["Student Name", "Classroom"])
+        .reset_index(drop=True)
+    )
     if matches.empty:
         st.warning("No students found.")
         return
@@ -183,7 +199,15 @@ def render_student_search_view(df):
         st.info("No subject-wise Top 5 rank achievements are available for this student yet.")
     else:
         medals = {1: "🥇", 2: "🥈", 3: "🥉"}
-        rank_rows = [{"Rank": medals.get(int(x["Rank"]), f"#{int(x['Rank'])}"), "Subject": str(x["Subject"]), "Test": str(x["Test"]), "Marks": int(round(float(x["Marks"]))) } for _, x in ranks.iterrows()]
+        rank_rows = [
+            {
+                "Rank": medals.get(int(x["Rank"]), f"#{int(x['Rank'])}"),
+                "Subject": str(x["Subject"]),
+                "Test": str(x["Test"]),
+                "Marks": int(round(float(x["Marks"]))),
+            }
+            for _, x in ranks.iterrows()
+        ]
         st.dataframe(pd.DataFrame(rank_rows), hide_index=True, use_container_width=True)
     st.markdown("---")
     if is_neet:
@@ -197,5 +221,79 @@ def render_student_search_view(df):
             render_category_section(student_data, category, allowed_subjects)
     st.markdown("---")
     render_combination_subject_analysis(student_data, is_neet, scope_label="Student")
+
+
+def main():
+    # Use the existing dashboard data loader and existing analysis views.
+    st.markdown('<div class="main-header">Student Performance Dashboard</div>', unsafe_allow_html=True)
+    with st.spinner("Loading data from Google Sheets..."):
+        df = load_and_process_data()
+    if df is None or df.empty:
+        st.warning("No data found matching the supplied student roster.")
+        return
+
+    st.session_state["_dashboard_full_df"] = df.copy()
+    st.session_state.setdefault("nav_mode", "student")
+
+    # Six active navigation items. The obsolete Concepts page is deliberately removed.
+    nav = [
+        ("🔄 Refresh", "refresh"),
+        ("👤 Student Data", "student"),
+        ("📊 Batch Analysis", "batch"),
+        ("🏆 Top Performers", "topper"),
+        ("🔎 Search Student", "search"),
+        ("💡 Motivation", "motivation"),
+    ]
+
+    cols = st.columns(len(nav))
+    for col, (label, mode_name) in zip(cols, nav):
+        with col:
+            pressed = st.button(label, use_container_width=True, key=f"nav_{mode_name}")
+        if pressed:
+            if mode_name == "refresh":
+                try:
+                    load_and_process_data.clear()
+                except Exception:
+                    pass
+                st.session_state.pop("_dashboard_full_df", None)
+                st.rerun()
+            else:
+                st.session_state["nav_mode"] = mode_name
+                st.rerun()
+
+    st.markdown("---")
+    mode = st.session_state.get("nav_mode", "student")
+
+    if mode == "motivation":
+        render_motivation()
+        return
+    if mode == "search":
+        render_student_search_view(df)
+        return
+
+    ordered = [
+        "Sankalp-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-C",
+        "Dhristi-NEET-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-E",
+    ]
+    available = set(df["Classroom"].astype(str).unique())
+    batches = [b for b in ordered if b in available]
+    if not batches:
+        st.warning("No batches available.")
+        return
+
+    batch = st.selectbox("Select Batch / Classroom:", batches, key="main_batch_selector")
+    data = df[df["Classroom"] == batch].copy()
+    is_neet = "NEET" in batch.upper()
+
+    if mode == "batch":
+        render_batch_analysis_view(data, is_neet)
+    elif mode == "topper":
+        render_top_performers_view(data, is_neet)
+    else:
+        render_student(data, batch)
+
 
 main()
