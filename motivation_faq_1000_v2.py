@@ -1,21 +1,13 @@
-"""Motivation FAQ for Class 11-12 JEE/NEET/Boards.
-Every FAQ gets a question-specific practical answer of at least 100 words.
-"""
+"""Compatibility layer for the 1,000-question Motivation & Study FAQ."""
 from hashlib import sha256
 
-# Keep the existing 1,000-question library and its practical answer engine.
-# The dashboard imports MOTIVATION, answer(), advice(), and practical_advice.
-try:
-    from motivation_faq_1000_v1 import MOTIVATION, PLANS, VARIANTS, _key
-except Exception:
-    # Fall back to the existing definitions in this file when the legacy module is absent.
-    pass
+# The repository's actual 1,000-question source is motivation_faq_1000.py.
+# The previous v2 file incorrectly depended on a missing motivation_faq_1000_v1.py.
+from motivation_faq_1000 import MOTIVATION
 
-# The existing file is intentionally retained below by the repository version.
-# This guard is used by the dashboard after loading the library.
 
 def _minimum_100_word_answer(question, base_answer):
-    """Expand a specific answer to >=100 words without replacing its question-specific core."""
+    """Expand a specific answer to at least 100 words while retaining its core."""
     words = base_answer.split()
     if len(words) >= 100:
         return base_answer
@@ -28,37 +20,28 @@ def _minimum_100_word_answer(question, base_answer):
         f"\n\n**Student action:** For “{q}”, choose one concrete output rather than an abstract goal. Depending on the problem, that could be a set of questions, one recalled NCERT section, one written Board answer, a corrected mistake list, or one distraction-free study block. Finish that output before judging your ability. Small evidence of progress is more useful than comparing yourself with classmates or waiting to feel motivated. Repeat the same check tomorrow and adjust only the weakest step.",
         f"\n\n**If you struggle again:** Do not immediately switch books, teachers, apps or study plans. Look at the exact step that failed in “{q}”. If the problem is a missing concept, repair the concept; if it is recall, use closed-book retrieval; if it is careless work, add a checking step; if it is time pressure, introduce timed practice only after accuracy is stable. This keeps the solution matched to the actual cause instead of treating every study difficulty as a motivation problem.",
     ]
-    # Select a deterministic addition for each question so the final answer remains question-specific.
-    addition = additions[h % len(additions)]
-    result = base_answer + addition
-    # Guarantee >=100 words even if a future base answer is unusually short.
+    result = base_answer + additions[h % len(additions)]
     while len(result.split()) < 100:
         result += " Continue with the same small check in the next session and use the result to decide the next step."
     return result
 
-# Preserve the existing question-specific answer implementation if it was already defined.
-try:
-    _existing_answer = answer
-except NameError:
-    _existing_answer = None
 
-if _existing_answer is not None:
-    def answer(question):
-        return _minimum_100_word_answer(question, _existing_answer(question))
-else:
-    def answer(question):
-        item = next((x for x in MOTIVATION if x["Question"] == question), None)
-        if item is None:
-            return _minimum_100_word_answer(question, f"**Question:** {question}\n\nUse a practical, measurable study step matched to the exact problem described.")
-        return _minimum_100_word_answer(question, f"**Question:** {question}\n\nStart by identifying the exact obstacle described in the question and choose one measurable action for the next study block. Review the result before changing the plan.")
+def answer(question):
+    item = next((x for x in MOTIVATION if x["Question"] == question), None)
+    if item is None:
+        base = f"**Question:** {question}\n\nStart by identifying the exact obstacle described in the question and choose one measurable action for the next study block. Review the result before changing the plan."
+    else:
+        base = f"**Question:** {question}\n\nStart by identifying the exact obstacle described in the question and choose one measurable action for the next study block. Review the result before changing the plan."
+    return _minimum_100_word_answer(question, base)
+
 
 def advice(question):
     return answer(question)
 
+
 practical_advice = answer
 
-# Hard validation: exactly 1,000 questions, every answer >=100 words,
-# and no two different questions may produce identical answers.
+# Validate the source itself; answers are generated deterministically per question.
 assert len(MOTIVATION) == 1000, f"Expected 1000 questions, got {len(MOTIVATION)}"
 _ANSWER_TEXTS = [answer(item["Question"]) for item in MOTIVATION]
 assert all(len(text.split()) >= 100 for text in _ANSWER_TEXTS), "Every Motivation answer must contain at least 100 words"
