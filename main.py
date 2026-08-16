@@ -27,8 +27,7 @@ if removed_concepts != 1:
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
 # -----------------------------------------------------------------------------
-# MOTIVATION: USE THE VERIFIED QUESTION-SPECIFIC LIBRARY DIRECTLY
-# This avoids the corrupted compressed-download path that caused the app error.
+# MOTIVATION: VERIFIED QUESTION-SPECIFIC LIBRARY
 # -----------------------------------------------------------------------------
 try:
     from motivation_library import MOTIVATION, practical_advice, advice
@@ -36,7 +35,6 @@ except Exception as e:
     st.error(f"Unable to load Motivation library: {e}")
     st.stop()
 
-# Normalise the library into the same searchable table structure.
 _motivation_rows = []
 for item in MOTIVATION:
     if not isinstance(item, dict):
@@ -56,36 +54,92 @@ if _motivation_df.empty:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# MOTIVATION: GOOGLE-STYLE TYPE-AHEAD SEARCH
+# CLEARABLE GOOGLE-STYLE SEARCH BOX
 # -----------------------------------------------------------------------------
+def _clearable_selectbox(label, options, *, key, placeholder):
+    """Selectbox with a visible X that clears the current search/selection."""
+    state_key = key
+    clear_key = f"{key}_clear"
+    st.markdown(
+        """
+        <style>
+        /* The X is visually overlaid at the right edge of the rounded search box. */
+        div[data-testid="stHorizontalBlock"]:has(.motivation-clear-anchor) > div:nth-child(2) button {
+            width: 44px !important;
+            min-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 50% !important;
+            background: transparent !important;
+            color: #5f6368 !important;
+            font-size: 22px !important;
+            font-weight: 500 !important;
+            box-shadow: none !important;
+            margin-left: -50px !important;
+            margin-top: 3px !important;
+            position: relative !important;
+            z-index: 20 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.motivation-clear-anchor) > div:nth-child(2) button:hover {
+            background: #f1f3f4 !important;
+            color: #202124 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.motivation-clear-anchor) > div:nth-child(2) button p {
+            font-size: 22px !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([20, 1], gap="small")
+    with right:
+        clear_pressed = st.button("✕", key=clear_key, help="Clear search")
+    if clear_pressed:
+        st.session_state[state_key] = None
+    with left:
+        st.markdown('<span class="motivation-clear-anchor"></span>', unsafe_allow_html=True)
+        value = st.selectbox(
+            label,
+            options,
+            index=None,
+            placeholder=placeholder,
+            key=state_key,
+            label_visibility="collapsed",
+        )
+    return value
+
 def render_motivation():
     st.markdown("## 💡 Motivation & Study Help")
     st.caption("Start typing — matching questions appear as suggestions in the search box.")
 
-    selected_question = st.selectbox(
+    selected_question = _clearable_selectbox(
         "Search motivation questions",
         _motivation_df["Question"].tolist(),
-        index=None,
-        placeholder="🔍 Type here — e.g. lazy, focus, JEE, NEET, Physics, hostel...",
         key="motivation_google_search_fixed",
-        label_visibility="collapsed",
+        placeholder="🔍 Type here — e.g. lazy, focus, JEE, NEET, Physics, hostel...",
     )
 
-    st.markdown("""
-    <style>
-    div[data-testid="stSelectbox"] > div > div {
-        border-radius: 28px !important;
-        min-height: 50px !important;
-        border: 1px solid #d9d9d9 !important;
-        box-shadow: 0 1px 6px rgba(0,0,0,0.14) !important;
-        background: #ffffff !important;
-    }
-    div[data-testid="stSelectbox"] input {
-        color: #202124 !important;
-        font-size: 16px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stSelectbox"] > div > div {
+            border-radius: 28px !important;
+            min-height: 50px !important;
+            border: 1px solid #d9d9d9 !important;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.14) !important;
+            background: #ffffff !important;
+        }
+        div[data-testid="stSelectbox"] input {
+            color: #202124 !important;
+            font-size: 16px !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if selected_question is None:
         return
@@ -103,7 +157,7 @@ def render_motivation():
     st.caption(f"Topic: {category}")
 
 # -----------------------------------------------------------------------------
-# STUDENT SEARCH: KEEP GREETING + TOP 5 WORKING
+# STUDENT SEARCH: KEEP GREETING + TOP 5 WORKING, WITH CLEAR X
 # -----------------------------------------------------------------------------
 def render_student_search_view(df):
     st.markdown('<div class="section-header">🔎 Search Student Results</div>', unsafe_allow_html=True)
@@ -118,7 +172,12 @@ def render_student_search_view(df):
         st.warning("No students found.")
         return
     options = [f"{row['Student Name']}  |  {row['Classroom']}" for _, row in matches.iterrows()]
-    selected = st.selectbox("🔎 Search Student Name:", options, index=None, placeholder="Type student name to see suggestions...", key="searched_student_option_fixed")
+    selected = _clearable_selectbox(
+        "🔎 Search Student Name:",
+        options,
+        key="searched_student_option_fixed",
+        placeholder="Type student name to see suggestions...",
+    )
     if selected is None:
         st.info("Select a student to view the student's dashboard and Top 5 rank achievements.")
         return
