@@ -1,5 +1,7 @@
 import re
 import urllib.request
+import gzip
+from io import BytesIO
 import pandas as pd
 import streamlit as st
 
@@ -29,7 +31,6 @@ source = re.sub(
     source,
     count=1,
 )
-# Prevent the base source from running main() before our overrides are ready.
 source = re.sub(r"\nmain\(\)\s*$", "\n", source, count=1)
 
 if removed_concepts != 1:
@@ -38,43 +39,57 @@ if removed_concepts != 1:
 
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
-# Load the expanded, student-safe library. This adds 800 total questions,
-# including 500+ new questions covering JEE, NEET, Boards, Classes 11-12,
-# hostel/day-scholar routines and Physics/Chemistry/Maths/Biology/Botany/
-# Zoology/English/Sanskrit.
+# -----------------------------------------------------------------------------
+# MOTIVATION DATA: READ THE VERIFIED 1000-QUESTION CSV DATASET
+# -----------------------------------------------------------------------------
+MOTIVATION_CSV_GZ = "https://raw.githubusercontent.com/sureshr89/student-dashboard/a8938952d88d86476b5bfba50c807d2fc0257e04/motivation_1000_questions_answers.csv.gz"
 try:
-    from motivation_library import MOTIVATION as EXPANDED_MOTIVATION, advice as practical_advice
+    _raw_motivation = urllib.request.urlopen(MOTIVATION_CSV_GZ, timeout=30).read()
+    _csv_bytes = gzip.decompress(_raw_motivation)
+    _motivation_df = pd.read_csv(BytesIO(_csv_bytes))
+    required_motivation_cols = ["ID", "Category", "Question", "Answer"]
+    missing_motivation = [c for c in required_motivation_cols if c not in _motivation_df.columns]
+    if missing_motivation:
+        raise ValueError(f"Missing Motivation columns: {', '.join(missing_motivation)}")
+    _motivation_df = _motivation_df.dropna(subset=["Question", "Answer"]).copy()
+    _motivation_df["Question"] = _motivation_df["Question"].astype(str).str.strip()
+    _motivation_df["Answer"] = _motivation_df["Answer"].astype(str).str.strip()
+    _motivation_df["Category"] = _motivation_df["Category"].fillna("Study Help").astype(str)
+    if len(_motivation_df) != 1000:
+        raise ValueError(f"Expected 1000 Motivation records, found {len(_motivation_df)}")
+    if _motivation_df["Question"].str.casefold().nunique() != 1000:
+        raise ValueError("Duplicate Motivation questions detected")
+    if _motivation_df["Answer"].nunique() != 1000:
+        raise ValueError("Duplicate Motivation answers detected")
+    if _motivation_df["Answer"].str.split().str.len().min() < 100:
+        raise ValueError("A Motivation answer is shorter than 100 words")
 except Exception as e:
-    st.error(f"Unable to load Motivation library: {e}")
+    st.error(f"Unable to load Motivation CSV: {e}")
     st.stop()
 
-MOTIVATION = EXPANDED_MOTIVATION
+MOTIVATION = _motivation_df.to_dict("records")
+_MOTIVATION_ANSWERS = dict(zip(_motivation_df["Question"], _motivation_df["Answer"]))
+
+def practical_advice(question):
+    return _MOTIVATION_ANSWERS.get(str(question).strip(), "")
+
 advice = practical_advice
 
-
 # -----------------------------------------------------------------------------
-# MOTIVATION: GOOGLE-STYLE TYPE-AHEAD SEARCH
+# MOTIVATION: ONE GOOGLE-STYLE SEARCH BOX WITH INSTANT SUGGESTIONS
 # -----------------------------------------------------------------------------
 def render_motivation():
     st.markdown("## 💡 Motivation & Study Help")
-    st.caption("Type in the search box. Matching student questions appear inside the box as suggestions.")
+    st.caption("Type one or more words. Related questions appear immediately inside the same search box.")
 
-    question_list = []
-    seen = set()
-    for item in MOTIVATION:
-        q = str(item.get("Question", "")).strip()
-        if q and q.lower() not in seen:
-            seen.add(q.lower())
-            question_list.append(q)
+    question_list = _motivation_df["Question"].tolist()
 
-    # One search box only. Streamlit's selectbox filters these options while
-    # the student types, so the suggestions stay inside the search control.
     selected_question = st.selectbox(
         "Search motivation questions",
         question_list,
         index=None,
         placeholder="🔍 Start typing — e.g. lazy, focus, JEE, NEET, Physics, hostel...",
-        key="motivation_google_search_v2",
+        key="motivation_csv_google_search_v3",
         label_visibility="collapsed",
     )
 
@@ -103,18 +118,18 @@ def render_motivation():
     if not selected_question:
         return
 
-    selected_item = next(
-        (item for item in MOTIVATION if str(item.get("Question", "")).strip() == selected_question),
-        None,
-    )
-    if selected_item is None:
+    selected_row = _motivation_df[_motivation_df["Question"] == selected_question]
+    if selected_row.empty:
         return
+
+    category = str(selected_row.iloc[0]["Category"])
+    answer_text = str(selected_row.iloc[0]["Answer"])
 
     st.markdown("### 💭 Your question")
     st.markdown(f"**{selected_question}**")
-    st.markdown("### 💡 Practical guidance")
-    st.info(advice(selected_question))
-    st.caption(f"Topic: {selected_item.get('Category', 'Study Help')}")
+    st.markdown("### 💡 Practical answer")
+    st.markdown(answer_text)
+    st.caption(f"Topic: {category}")
 
 
 # -----------------------------------------------------------------------------
