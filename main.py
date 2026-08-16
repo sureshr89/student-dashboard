@@ -3,6 +3,14 @@ import urllib.request
 import pandas as pd
 import streamlit as st
 
+# Professional student-dashboard branding.
+st.set_page_config(
+    page_title="Student Performance Dashboard",
+    page_icon="student_logo.svg",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
 SRC = "https://raw.githubusercontent.com/sureshr89/student-dashboard/5283697e96cdb80eb8c62311f0d7e9c96eb99150/main.py"
 
 try:
@@ -225,7 +233,7 @@ def render_student_search_view(df):
 
 def main():
     # Use the existing dashboard data loader and existing analysis views.
-    st.markdown('<div class="main-header">Student Performance Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🎓 Student Performance Dashboard</div>', unsafe_allow_html=True)
     with st.spinner("Loading data from Google Sheets..."):
         df = load_and_process_data()
     if df is None or df.empty:
@@ -238,7 +246,7 @@ def main():
     # Six active navigation items. The obsolete Concepts page is deliberately removed.
     nav = [
         ("🔄 Refresh", "refresh"),
-        ("👤 Student Data", "student"),
+        ("🎓 Student Data", "student"),
         ("📊 Batch Analysis", "batch"),
         ("🏆 Top Performers", "topper"),
         ("🔎 Search Student", "search"),
