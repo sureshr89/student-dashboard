@@ -40,42 +40,83 @@ if removed_concepts != 1:
     st.error("Dashboard safety check failed while removing the old Concepts module.")
     st.stop()
 
-# Make sure the dynamically loaded source cannot depend on the removed module.
 source = source.replace("load_concepts.clear()", "")
 
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
 # -----------------------------------------------------------------------------
-# MOTIVATION: QUESTION-SPECIFIC PRACTICAL ANSWERS
+# NOTES & MATERIALS
 # -----------------------------------------------------------------------------
-try:
-    from motivation_library import MOTIVATION, practical_advice, advice
-except Exception as e:
-    st.error(f"Unable to load Motivation library: {e}")
-    st.stop()
+# The uploaded handwritten PDFs will be connected here through external/cloud
+# storage. Keeping large binary files outside the Git repository prevents the
+# dashboard source from becoming unnecessarily large.
 
-_motivation_rows = []
-for item in MOTIVATION:
-    if not isinstance(item, dict):
-        continue
-    q = str(item.get("Question", "")).strip()
-    if not q:
-        continue
-    _motivation_rows.append({
-        "Category": str(item.get("Category", "Study Help")),
-        "Question": q,
-        "Answer": str(practical_advice(q) or advice(q) or "").strip(),
-    })
+def render_notes_materials():
+    st.markdown("## 📚 Notes & Materials")
+    st.caption("Access your study notes and materials. More folders/files can be added later without changing the navigation.")
 
-_motivation_df = pd.DataFrame(_motivation_rows).drop_duplicates(subset=["Question"], keep="first")
-if _motivation_df.empty:
-    st.error("Motivation library contains no searchable questions.")
-    st.stop()
+    categories = [
+        ("🧪 Physical Chemistry", "physical"),
+        ("🧬 Organic Chemistry", "organic"),
+        ("⚛️ Inorganic Chemistry", "inorganic"),
+        ("📝 Assignment & Mixed Notes", "mixed"),
+    ]
+
+    cols = st.columns(4)
+    for col, (label, key) in zip(cols, categories):
+        with col:
+            st.markdown(
+                f"""
+                <div style='padding:18px;border:1px solid #e6e6e6;border-radius:14px;
+                            background:#ffffff;box-shadow:0 1px 6px rgba(0,0,0,0.08);
+                            text-align:center;min-height:105px;'>
+                    <div style='font-size:18px;font-weight:700;'>{label}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("---")
+    selected = st.selectbox(
+        "Select a notes category",
+        ["Physical Chemistry", "Organic Chemistry", "Inorganic Chemistry", "Assignment & Mixed Notes"],
+        key="notes_materials_category",
+    )
+
+    category_map = {
+        "Physical Chemistry": "physical",
+        "Organic Chemistry": "organic",
+        "Inorganic Chemistry": "inorganic",
+        "Assignment & Mixed Notes": "mixed",
+    }
+    category_key = category_map[selected]
+
+    # Placeholder until the large PDF collection is connected to storage.
+    st.info(
+        f"📁 {selected} selected. The individual PDF files will appear here when the notes storage is connected. "
+        "Your existing folder structure can be preserved."
+    )
+
+    # Optional manifest support for future cloud/local file links.
+    manifest_url = f"https://raw.githubusercontent.com/sureshr89/student-dashboard/main/notes_manifest_{category_key}.json"
+    try:
+        manifest = urllib.request.urlopen(manifest_url, timeout=5).read().decode("utf-8")
+        import json
+        items = json.loads(manifest)
+        if isinstance(items, list) and items:
+            st.markdown("### 📄 Files")
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name", "Untitled PDF"))
+                url = str(item.get("url", "")).strip()
+                if url:
+                    st.markdown(f"- [📄 {name}]({url})")
+    except Exception:
+        pass
 
 # -----------------------------------------------------------------------------
 # CLEARABLE SEARCH BOXES
-# The callback changes widget state before the next rerun, avoiding
-# StreamlitValueAssignmentNotAllowedError.
 # -----------------------------------------------------------------------------
 def _clear_search_value(widget_key):
     st.session_state[widget_key] = None
@@ -132,33 +173,6 @@ def _clearable_selectbox(label, options, *, key, placeholder):
         unsafe_allow_html=True,
     )
     return value
-
-
-def render_motivation():
-    st.markdown("## 💡 Motivation & Study Help")
-    st.caption("Start typing — matching questions appear as suggestions. Tap ✕ to clear the search.")
-
-    selected_question = _clearable_selectbox(
-        "Search motivation questions",
-        _motivation_df["Question"].tolist(),
-        key="motivation_google_search_fixed",
-        placeholder="🔍 Type here — e.g. lazy, focus, JEE, NEET, Physics, hostel...",
-    )
-
-    if selected_question is None:
-        return
-
-    selected = _motivation_df[_motivation_df["Question"] == selected_question]
-    if selected.empty:
-        return
-
-    category = str(selected.iloc[0]["Category"])
-    answer_text = str(selected.iloc[0]["Answer"])
-    st.markdown("### 💭 Your question")
-    st.markdown(f"**{selected_question}**")
-    st.markdown("### 💡 Practical answer")
-    st.markdown(answer_text)
-    st.caption(f"Topic: {category}")
 
 # -----------------------------------------------------------------------------
 # STUDENT SEARCH
@@ -232,7 +246,6 @@ def render_student_search_view(df):
 
 
 def main():
-    # Use the existing dashboard data loader and existing analysis views.
     st.markdown('<div class="main-header">🎓 Student Performance Dashboard</div>', unsafe_allow_html=True)
     with st.spinner("Loading data from Google Sheets..."):
         df = load_and_process_data()
@@ -243,14 +256,13 @@ def main():
     st.session_state["_dashboard_full_df"] = df.copy()
     st.session_state.setdefault("nav_mode", "student")
 
-    # Six active navigation items. The obsolete Concepts page is deliberately removed.
     nav = [
         ("🔄 Refresh", "refresh"),
         ("🎓 Student Data", "student"),
         ("📊 Batch Analysis", "batch"),
         ("🏆 Top Performers", "topper"),
         ("🔎 Search Student", "search"),
-        ("💡 Motivation", "motivation"),
+        ("📚 Notes & Materials", "notes"),
     ]
 
     cols = st.columns(len(nav))
@@ -272,8 +284,8 @@ def main():
     st.markdown("---")
     mode = st.session_state.get("nav_mode", "student")
 
-    if mode == "motivation":
-        render_motivation()
+    if mode == "notes":
+        render_notes_materials()
         return
     if mode == "search":
         render_student_search_view(df)
