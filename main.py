@@ -47,13 +47,15 @@ exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 # -----------------------------------------------------------------------------
 # NOTES & MATERIALS
 # -----------------------------------------------------------------------------
-# The uploaded handwritten PDFs will be connected here through external/cloud
-# storage. Keeping large binary files outside the Git repository prevents the
-# dashboard source from becoming unnecessarily large.
+# Notes are currently assigned only to Sankalp-JEE-WD-Madhapur-(26-27)-A.
+# The uploaded handwritten PDFs will be connected through external/cloud
+# storage so the Git repository remains lightweight.
+NOTES_ALLOWED_BATCH = "Sankalp-JEE-WD-Madhapur-(26-27)-A"
+
 
 def render_notes_materials():
     st.markdown("## 📚 Notes & Materials")
-    st.caption("Access your study notes and materials. More folders/files can be added later without changing the navigation.")
+    st.caption("Notes and study materials for Sankalp-JEE-WD-Madhapur-(26-27)-A.")
 
     categories = [
         ("🧪 Physical Chemistry", "physical"),
@@ -91,13 +93,11 @@ def render_notes_materials():
     }
     category_key = category_map[selected]
 
-    # Placeholder until the large PDF collection is connected to storage.
     st.info(
         f"📁 {selected} selected. The individual PDF files will appear here when the notes storage is connected. "
         "Your existing folder structure can be preserved."
     )
 
-    # Optional manifest support for future cloud/local file links.
     manifest_url = f"https://raw.githubusercontent.com/sureshr89/student-dashboard/main/notes_manifest_{category_key}.json"
     try:
         manifest = urllib.request.urlopen(manifest_url, timeout=5).read().decode("utf-8")
@@ -256,14 +256,38 @@ def main():
     st.session_state["_dashboard_full_df"] = df.copy()
     st.session_state.setdefault("nav_mode", "student")
 
+    ordered = [
+        "Sankalp-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-C",
+        "Dhristi-NEET-WD-Madhapur-(26-27)-A",
+        "Dhristi-JEE-WD-Madhapur-(26-27)-E",
+    ]
+    available = set(df["Classroom"].astype(str).unique())
+    batches = [b for b in ordered if b in available]
+    if not batches:
+        st.warning("No batches available.")
+        return
+
+    # Select the batch before navigation so Notes & Materials can be restricted
+    # to the authorized Sankalp batch only.
+    batch = st.selectbox("Select Batch / Classroom:", batches, key="main_batch_selector")
+    notes_allowed = batch == NOTES_ALLOWED_BATCH
+
     nav = [
         ("🔄 Refresh", "refresh"),
         ("🎓 Student Data", "student"),
         ("📊 Batch Analysis", "batch"),
         ("🏆 Top Performers", "topper"),
         ("🔎 Search Student", "search"),
-        ("📚 Notes & Materials", "notes"),
     ]
+    if notes_allowed:
+        nav.append(("📚 Notes & Materials", "notes"))
+
+    # If a non-authorized batch is selected while Notes was active, return to
+    # Student Data and prevent the old Notes view from remaining accessible.
+    if not notes_allowed and st.session_state.get("nav_mode") == "notes":
+        st.session_state["nav_mode"] = "student"
 
     cols = st.columns(len(nav))
     for col, (label, mode_name) in zip(cols, nav):
@@ -283,30 +307,18 @@ def main():
 
     st.markdown("---")
     mode = st.session_state.get("nav_mode", "student")
+    data = df[df["Classroom"] == batch].copy()
+    is_neet = "NEET" in batch.upper()
 
     if mode == "notes":
+        if not notes_allowed:
+            st.error("📚 Notes & Materials are available only for Sankalp-JEE-WD-Madhapur-(26-27)-A.")
+            return
         render_notes_materials()
         return
     if mode == "search":
         render_student_search_view(df)
         return
-
-    ordered = [
-        "Sankalp-JEE-WD-Madhapur-(26-27)-A",
-        "Dhristi-JEE-WD-Madhapur-(26-27)-A",
-        "Dhristi-JEE-WD-Madhapur-(26-27)-C",
-        "Dhristi-NEET-WD-Madhapur-(26-27)-A",
-        "Dhristi-JEE-WD-Madhapur-(26-27)-E",
-    ]
-    available = set(df["Classroom"].astype(str).unique())
-    batches = [b for b in ordered if b in available]
-    if not batches:
-        st.warning("No batches available.")
-        return
-
-    batch = st.selectbox("Select Batch / Classroom:", batches, key="main_batch_selector")
-    data = df[df["Classroom"] == batch].copy()
-    is_neet = "NEET" in batch.upper()
 
     if mode == "batch":
         render_batch_analysis_view(data, is_neet)
