@@ -55,7 +55,14 @@ source = source.replace(
     1,
 )
 
-exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
+# Execute the embedded dashboard without letting its own __main__ guard run.
+# This guarantees that widgets are created only by the final patched main() below.
+_original_name = globals().get("__name__", "__main__")
+try:
+    globals()["__name__"] = "_embedded_dashboard_"
+    exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
+finally:
+    globals()["__name__"] = _original_name
 
 # -----------------------------------------------------------------------------
 # NOTES & MATERIALS
