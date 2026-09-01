@@ -42,6 +42,16 @@ if removed_concepts != 1:
 
 source = source.replace("load_concepts.clear()", "")
 
+# Robust roster fallback: some Google Sheet rows have a missing, new, or changed
+# User ID even though the student name is uniquely known in the roster. The base
+# loader previously dropped those rows silently. Allow its existing safe
+# unique-name mapping to run even when an unmapped User ID is present.
+source = source.replace(
+    "            elif not uid_val and name_lower in unique_name_to_batch:\\n",
+    "            elif name_lower in unique_name_to_batch:\\n",
+    1,
+)
+
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
 # -----------------------------------------------------------------------------
