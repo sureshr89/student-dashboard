@@ -47,8 +47,8 @@ source = source.replace("load_concepts.clear()", "")
 # loader previously dropped those rows silently. Allow its existing safe
 # unique-name mapping to run even when an unmapped User ID is present.
 source = source.replace(
-    "            elif not uid_val and name_lower in unique_name_to_batch:\\n",
-    "            elif name_lower in unique_name_to_batch:\\n",
+    "            elif not uid_val and name_lower in unique_name_to_batch:\n",
+    "            elif name_lower in unique_name_to_batch:\n",
     1,
 )
 
