@@ -35,10 +35,16 @@ source = re.sub(
     count=1,
 )
 # Prevent the dynamically loaded source from starting its own dashboard.
-# It uses an if __name__ == "__main__" guard, and exec() inherits this app's
-# __name__, so leaving that guard would render the UI twice and duplicate widget keys.
+# exec() inherits this app's __name__, so remove the guarded main() call before exec.
 source = re.sub(
-    r'\nif __name__\s*==\s*["\']__main__["\']\s*:\s*\n\s*main\(\)\s*
+    r"\nif __name__\s*==\s*(['\\"])__main__\\1\s*:\s*\n\s*main\(\)\s*$",
+    "\n",
+    source,
+    count=1,
+    flags=re.M,
+)
+
+if removed_concepts != 1:
     st.error("Dashboard safety check failed while removing the old Concepts module.")
     st.stop()
 
