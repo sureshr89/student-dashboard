@@ -54,6 +54,10 @@ source = source.replace(
 
 exec(compile(source, "dashboard_base.py", "exec"), globals(), globals())
 
+# The dynamically loaded dashboard's original main() call is intentionally removed
+# above, so start the final patched dashboard exactly once here.
+main()
+
 # -----------------------------------------------------------------------------
 # NOTES & MATERIALS
 # -----------------------------------------------------------------------------
